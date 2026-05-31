@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
@@ -20,11 +21,15 @@ import (
 )
 
 func runMigrations(dbURL string) {
+	// golang-migrate con el driver pgx/v5 requiere el scheme "pgx5://"
+	migrateURL := strings.Replace(dbURL, "postgresql://", "pgx5://", 1)
+	migrateURL = strings.Replace(migrateURL, "postgres://", "pgx5://", 1)
+
 	src, err := iofs.New(api.MigrationFS, "migrations")
 	if err != nil {
 		log.Fatalf("migrations: source error: %v", err)
 	}
-	m, err := migrate.NewWithSourceInstance("iofs", src, dbURL)
+	m, err := migrate.NewWithSourceInstance("iofs", src, migrateURL)
 	if err != nil {
 		log.Fatalf("migrations: init error: %v", err)
 	}

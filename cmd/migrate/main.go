@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 
@@ -24,12 +25,16 @@ func main() {
 		log.Fatal("ERROR: La variable de entorno DATABASE_URL no está configurada")
 	}
 
+	// golang-migrate con el driver pgx/v5 requiere el scheme "pgx5://"
+	migrateURL := strings.Replace(dbURL, "postgresql://", "pgx5://", 1)
+	migrateURL = strings.Replace(migrateURL, "postgres://", "pgx5://", 1)
+
 	sourceDriver, err := iofs.New(api_cultura_conecta.MigrationFS, "migrations")
 	if err != nil {
 		log.Fatalf("Error al inicializar el driver de iofs: %v", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance("iofs", sourceDriver, dbURL)
+	m, err := migrate.NewWithSourceInstance("iofs", sourceDriver, migrateURL)
 	if err != nil {
 		log.Fatalf("Error al inicializar golang-migrate: %v", err)
 	}
