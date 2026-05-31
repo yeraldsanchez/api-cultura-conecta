@@ -2,17 +2,38 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
+	api "api-cultura-conecta"
 	db "api-cultura-conecta/internal/db/generated"
 	"api-cultura-conecta/internal/service"
 	"api-cultura-conecta/internal/transport"
 )
+
+func runMigrations(dbURL string) {
+	src, err := iofs.New(api.MigrationFS, "migrations")
+	if err != nil {
+		log.Fatalf("migrations: source error: %v", err)
+	}
+	m, err := migrate.NewWithSourceInstance("iofs", src, dbURL)
+	if err != nil {
+		log.Fatalf("migrations: init error: %v", err)
+	}
+	defer m.Close()
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		log.Fatalf("migrations: %v", err)
+	}
+	log.Println("migrations: OK")
+}
 
 func main() {
 	_ = godotenv.Load()
@@ -26,6 +47,8 @@ func main() {
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET is required")
 	}
+
+	runMigrations(dbURL)
 
 	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {

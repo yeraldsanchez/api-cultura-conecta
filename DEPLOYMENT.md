@@ -146,15 +146,6 @@ Para generar el `JWT_SECRET` puedes correr en la terminal:
 openssl rand -hex 32
 ```
 
-### Pre-deploy command (migraciones)
-
-En la sección **Deploy** → **Pre-deploy Command** escribe:
-```
-/migrate up
-```
-
-Esto corre las migraciones automáticamente antes de que la nueva versión reciba tráfico. Si las migraciones fallan, Render cancela el despliegue y la versión anterior sigue activa.
-
 5. Click en **Create Web Service**
 
 ### Obtener el deploy hook
@@ -233,8 +224,9 @@ https://api-cultura-conecta.onrender.com
 2. Si algún test falla, el pipeline se detiene ahí — Render no recibe ninguna llamada y la versión anterior sigue activa
 3. Si todos los tests pasan, se construye la imagen Docker y se sube a GHCR con dos tags: `latest` y el SHA del commit
 4. Se llama al deploy hook de Render
-5. Render descarga la imagen `:latest`, corre el pre-deploy command (`/migrate up`) y levanta el nuevo contenedor
-6. Si el pre-deploy falla (por ejemplo una migración con error), Render cancela y mantiene la versión anterior
+5. Render descarga la imagen `:latest` y levanta el nuevo contenedor
+6. Al arrancar, la API corre automáticamente las migraciones pendientes antes de aceptar tráfico
+7. Si una migración falla, la aplicación no arranca y Render mantiene la versión anterior activa
 
 ---
 
