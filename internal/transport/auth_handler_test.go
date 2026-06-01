@@ -44,6 +44,30 @@ func (f *fakeQuerier) GetUserByEmail(_ context.Context, email string) (db.User, 
 	return u, nil
 }
 
+func (f *fakeQuerier) AssignFocusTypeToUser(_ context.Context, _ db.AssignFocusTypeToUserParams) error {
+	return nil
+}
+
+func (f *fakeQuerier) CreateFocusType(_ context.Context, _ string) (db.FocusType, error) {
+	return db.FocusType{}, nil
+}
+
+func (f *fakeQuerier) CreateUserProfile(_ context.Context, _ db.CreateUserProfileParams) (int32, error) {
+	return 0, nil
+}
+
+func (f *fakeQuerier) GetFocusTypes(_ context.Context) ([]db.FocusType, error) {
+	return nil, nil
+}
+
+func (f *fakeQuerier) GetUserFocusTypes(_ context.Context, _ int32) ([]db.FocusType, error) {
+	return nil, nil
+}
+
+func (f *fakeQuerier) GetUserProfileByUserId(_ context.Context, _ int32) (db.GetUserProfileByUserIdRow, error) {
+	return db.GetUserProfileByUserIdRow{}, nil
+}
+
 func newTestRouter(q db.Querier) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	svc := service.NewAuthService(q, "test-secret-key")

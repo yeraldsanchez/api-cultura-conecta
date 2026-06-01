@@ -39,13 +39,17 @@ type EventAttendee struct {
 	ConfirmedAt time.Time `json:"confirmed_at"`
 }
 
+type FocusType struct {
+	ID   int32  `json:"id"`
+	Name string `json:"name"`
+}
+
 type Group struct {
 	ID          int32     `json:"id"`
 	WorkID      int32     `json:"work_id"`
 	CreatedBy   int32     `json:"created_by"`
 	Name        string    `json:"name"`
 	Description *string   `json:"description"`
-	FocusType   string    `json:"focus_type"`
 	DepthLevel  string    `json:"depth_level"`
 	CreatedAt   time.Time `json:"created_at"`
 }
@@ -55,6 +59,11 @@ type GroupMember struct {
 	UserID   int32     `json:"user_id"`
 	Role     string    `json:"role"`
 	JoinedAt time.Time `json:"joined_at"`
+}
+
+type GroupsFocusType struct {
+	GroupID     int32 `json:"group_id"`
+	FocusTypeID int32 `json:"focus_type_id"`
 }
 
 type Post struct {
@@ -82,7 +91,11 @@ type UserInterest struct {
 type UserProfile struct {
 	ID         int32     `json:"id"`
 	UserID     int32     `json:"user_id"`
-	FocusType  string    `json:"focus_type"`
 	DepthLevel string    `json:"depth_level"`
 	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type UsersFocusType struct {
+	ProfileID   int32 `json:"profile_id"`
+	FocusTypeID int32 `json:"focus_type_id"`
 }
