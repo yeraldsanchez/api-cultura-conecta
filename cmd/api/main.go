@@ -55,17 +55,25 @@ func main() {
 
 	runMigrations(dbURL)
 
-	pool, err := pgxpool.New(context.Background(), dbURL)
+	poolURL := strings.Replace(dbURL, "pgx5://", "postgres://", 1)
+	// normalizar otros esquemas a postgres://
+	poolURL = strings.Replace(poolURL, "postgresql://", "postgres://", 1)
+
+	pool, err := pgxpool.New(context.Background(), poolURL)
 	if err != nil {
 		log.Fatalf("cannot connect to database: %v", err)
 	}
-	defer pool.Close()
 
 	authSvc := service.NewAuthService(db.New(pool), jwtSecret)
+	userSvc := service.NewUserProfileService(db.New(pool), pool)
+	catalogSvc := service.NewCatalogService(db.New(pool))
+
 	authHandler := transport.NewAuthHandler(authSvc)
+	userHandler := transport.NewUserProfileHandler(userSvc)
+	catalogHandler := transport.NewCatalogHandler(catalogSvc)
 
 	r := gin.Default()
-	transport.RegisterRoutes(r, authHandler)
+	transport.RegisterRoutes(r, authHandler, userHandler, catalogHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
