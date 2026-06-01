@@ -68,6 +68,22 @@ func (f *fakeQuerier) GetUserProfileByUserId(_ context.Context, _ int32) (db.Get
 	return db.GetUserProfileByUserIdRow{}, nil
 }
 
+func (f *fakeQuerier) AssignInterestToUser(_ context.Context, _ db.AssignInterestToUserParams) error {
+	return nil
+}
+
+func (f *fakeQuerier) CreateCategory(_ context.Context, _ string) (db.Category, error) {
+	return db.Category{}, nil
+}
+
+func (f *fakeQuerier) GetCategories(_ context.Context) ([]db.Category, error) {
+	return nil, nil
+}
+
+func (f *fakeQuerier) GetUserInterests(_ context.Context, _ int32) ([]db.Category, error) {
+	return nil, nil
+}
+
 func newTestRouter(q db.Querier) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	svc := service.NewAuthService(q, "test-secret-key")
