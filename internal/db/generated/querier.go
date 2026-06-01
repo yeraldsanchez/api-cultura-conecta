@@ -9,8 +9,18 @@ import (
 )
 
 type Querier interface {
+	AssignFocusTypeToUser(ctx context.Context, arg AssignFocusTypeToUserParams) error
+	AssignInterestToUser(ctx context.Context, arg AssignInterestToUserParams) error
+	CreateCategory(ctx context.Context, name string) (Category, error)
+	CreateFocusType(ctx context.Context, name string) (FocusType, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (int32, error)
+	CreateUserProfile(ctx context.Context, arg CreateUserProfileParams) (int32, error)
+	GetCategories(ctx context.Context) ([]Category, error)
+	GetFocusTypes(ctx context.Context) ([]FocusType, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserFocusTypes(ctx context.Context, profileID int32) ([]FocusType, error)
+	GetUserInterests(ctx context.Context, profileID int32) ([]Category, error)
+	GetUserProfileByUserId(ctx context.Context, id int32) (GetUserProfileByUserIdRow, error)
 }
 
 var _ Querier = (*Queries)(nil)
