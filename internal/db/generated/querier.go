@@ -14,6 +14,7 @@ type Querier interface {
 	CreateCategory(ctx context.Context, name string) (Category, error)
 	CreateCulturalWork(ctx context.Context, arg CreateCulturalWorkParams) (CreateCulturalWorkRow, error)
 	CreateFocusType(ctx context.Context, name string) (FocusType, error)
+	CreateGroup(ctx context.Context, arg CreateGroupParams) (CreateGroupRow, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (int32, error)
 	CreateUserProfile(ctx context.Context, arg CreateUserProfileParams) (int32, error)
 	GetCategories(ctx context.Context) ([]Category, error)

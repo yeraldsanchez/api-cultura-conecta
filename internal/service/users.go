@@ -21,6 +21,7 @@ type CreateProfileInput struct {
 	DepthLevel   string  `json:"depth_level" validate:"required"`
 	FocusIDs     []int32 `json:"focus_ids" validate:"required"`
 	InterestsIDs []int32 `json:"interests" validate:"required"`
+	Name         string  `json:"name" validate:"required"`
 }
 
 type FocusTypesOutput struct {
@@ -34,6 +35,7 @@ type UserInterestsOutput struct {
 }
 type CreateProfileOutput struct {
 	UserID     int32                 `json:"user_id"`
+	Name       string                `json:"name"`
 	Email      string                `json:"email"`
 	ProfileID  int32                 `json:"profile_id"`
 	DepthLevel string                `json:"depth_level"`
@@ -44,6 +46,7 @@ type CreateProfileOutput struct {
 func (s *UserProfileService) Create(ctx context.Context, input CreateProfileInput) (CreateProfileOutput, error) {
 	err := withTx(ctx, s.pool, func(q db.Querier) error {
 		profileID, err := q.CreateUserProfile(ctx, db.CreateUserProfileParams{
+			Name:       input.Name,
 			UserID:     input.UserID,
 			DepthLevel: input.DepthLevel,
 		})
@@ -106,6 +109,7 @@ func (s *UserProfileService) GetProfile(ctx context.Context, userID int32) (Crea
 	}
 	return CreateProfileOutput{
 		UserID:     profile.UserID,
+		Name:       profile.Name,
 		Email:      profile.Email,
 		ProfileID:  profile.ProfileID,
 		DepthLevel: profile.DepthLevel,

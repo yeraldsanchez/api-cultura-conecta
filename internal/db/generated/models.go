@@ -92,6 +92,7 @@ type UserProfile struct {
 	UserID     int32     `json:"user_id"`
 	DepthLevel string    `json:"depth_level"`
 	UpdatedAt  time.Time `json:"updated_at"`
+	Name       string    `json:"name"`
 }
 
 type UsersFocusType struct {
