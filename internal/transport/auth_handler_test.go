@@ -19,6 +19,7 @@ import (
 
 // fakeQuerier implementa db.Querier con un mapa en memoria.
 type fakeQuerier struct {
+	db.Querier
 	users  map[string]db.User
 	nextID int32
 }
@@ -42,46 +43,6 @@ func (f *fakeQuerier) GetUserByEmail(_ context.Context, email string) (db.User, 
 		return db.User{}, pgx.ErrNoRows
 	}
 	return u, nil
-}
-
-func (f *fakeQuerier) AssignFocusTypeToUser(_ context.Context, _ db.AssignFocusTypeToUserParams) error {
-	return nil
-}
-
-func (f *fakeQuerier) CreateFocusType(_ context.Context, _ string) (db.FocusType, error) {
-	return db.FocusType{}, nil
-}
-
-func (f *fakeQuerier) CreateUserProfile(_ context.Context, _ db.CreateUserProfileParams) (int32, error) {
-	return 0, nil
-}
-
-func (f *fakeQuerier) GetFocusTypes(_ context.Context) ([]db.FocusType, error) {
-	return nil, nil
-}
-
-func (f *fakeQuerier) GetUserFocusTypes(_ context.Context, _ int32) ([]db.FocusType, error) {
-	return nil, nil
-}
-
-func (f *fakeQuerier) GetUserProfileByUserId(_ context.Context, _ int32) (db.GetUserProfileByUserIdRow, error) {
-	return db.GetUserProfileByUserIdRow{}, nil
-}
-
-func (f *fakeQuerier) AssignInterestToUser(_ context.Context, _ db.AssignInterestToUserParams) error {
-	return nil
-}
-
-func (f *fakeQuerier) CreateCategory(_ context.Context, _ string) (db.Category, error) {
-	return db.Category{}, nil
-}
-
-func (f *fakeQuerier) GetCategories(_ context.Context) ([]db.Category, error) {
-	return nil, nil
-}
-
-func (f *fakeQuerier) GetUserInterests(_ context.Context, _ int32) ([]db.Category, error) {
-	return nil, nil
 }
 
 func newTestRouter(q db.Querier) *gin.Engine {
