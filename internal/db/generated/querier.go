@@ -12,10 +12,12 @@ type Querier interface {
 	AssignFocusTypeToUser(ctx context.Context, arg AssignFocusTypeToUserParams) error
 	AssignInterestToUser(ctx context.Context, arg AssignInterestToUserParams) error
 	CreateCategory(ctx context.Context, name string) (Category, error)
+	CreateCulturalWork(ctx context.Context, arg CreateCulturalWorkParams) (CreateCulturalWorkRow, error)
 	CreateFocusType(ctx context.Context, name string) (FocusType, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (int32, error)
 	CreateUserProfile(ctx context.Context, arg CreateUserProfileParams) (int32, error)
 	GetCategories(ctx context.Context) ([]Category, error)
+	GetCulturalWorks(ctx context.Context) ([]GetCulturalWorksRow, error)
 	GetFocusTypes(ctx context.Context) ([]FocusType, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserFocusTypes(ctx context.Context, profileID int32) ([]FocusType, error)

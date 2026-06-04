@@ -17,7 +17,6 @@ type CulturalWork struct {
 	ID         int32     `json:"id"`
 	Title      string    `json:"title"`
 	CategoryID int32     `json:"category_id"`
-	ExternalID *string   `json:"external_id"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 

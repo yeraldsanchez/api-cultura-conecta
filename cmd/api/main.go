@@ -67,13 +67,15 @@ func main() {
 	authSvc := service.NewAuthService(db.New(pool), jwtSecret)
 	userSvc := service.NewUserProfileService(db.New(pool), pool)
 	catalogSvc := service.NewCatalogService(db.New(pool))
+	culturalWorkSvc := service.NewCulturalWorksService(db.New(pool))
 
 	authHandler := transport.NewAuthHandler(authSvc)
 	userHandler := transport.NewUserProfileHandler(userSvc)
 	catalogHandler := transport.NewCatalogHandler(catalogSvc)
+	culturalWorksHandler := transport.NewCulturalWorksHandler(culturalWorkSvc)
 
 	r := gin.Default()
-	transport.RegisterRoutes(r, authHandler, userHandler, catalogHandler)
+	transport.RegisterRoutes(r, authHandler, userHandler, catalogHandler, culturalWorksHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
