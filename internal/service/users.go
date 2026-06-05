@@ -21,29 +21,23 @@ type CreateProfileInput struct {
 	DepthLevel   string  `json:"depth_level" validate:"required"`
 	FocusIDs     []int32 `json:"focus_ids" validate:"required"`
 	InterestsIDs []int32 `json:"interests" validate:"required"`
+	Name         string  `json:"name" validate:"required"`
 }
 
-type FocusTypesOutput struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
+type ProfileOutput struct {
+	UserID     int32             `json:"user_id"`
+	Name       string            `json:"name"`
+	Email      string            `json:"email"`
+	ProfileID  int32             `json:"profile_id"`
+	DepthLevel string            `json:"depth_level"`
+	FocusTypes []FocusTypeOutput `json:"focus_types"`
+	Interests  []InterestOutput  `json:"interests"`
 }
 
-type UserInterestsOutput struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
-}
-type CreateProfileOutput struct {
-	UserID     int32                 `json:"user_id"`
-	Email      string                `json:"email"`
-	ProfileID  int32                 `json:"profile_id"`
-	DepthLevel string                `json:"depth_level"`
-	FocusTypes []FocusTypesOutput    `json:"focus_types"`
-	Interests  []UserInterestsOutput `json:"interests"`
-}
-
-func (s *UserProfileService) Create(ctx context.Context, input CreateProfileInput) (CreateProfileOutput, error) {
+func (s *UserProfileService) Create(ctx context.Context, input CreateProfileInput) (ProfileOutput, error) {
 	err := withTx(ctx, s.pool, func(q db.Querier) error {
 		profileID, err := q.CreateUserProfile(ctx, db.CreateUserProfileParams{
+			Name:       input.Name,
 			UserID:     input.UserID,
 			DepthLevel: input.DepthLevel,
 		})
@@ -71,23 +65,23 @@ func (s *UserProfileService) Create(ctx context.Context, input CreateProfileInpu
 		return nil
 	})
 	if err != nil {
-		return CreateProfileOutput{}, err
+		return ProfileOutput{}, err
 	}
 	return s.GetProfile(ctx, input.UserID)
 }
 
-func (s *UserProfileService) GetProfile(ctx context.Context, userID int32) (CreateProfileOutput, error) {
+func (s *UserProfileService) GetProfile(ctx context.Context, userID int32) (ProfileOutput, error) {
 	profile, err := s.q.GetUserProfileByUserId(ctx, userID)
 	if err != nil {
-		return CreateProfileOutput{}, err
+		return ProfileOutput{}, err
 	}
 	focusTypes, err := s.q.GetUserFocusTypes(ctx, profile.ProfileID)
 	if err != nil {
-		return CreateProfileOutput{}, err
+		return ProfileOutput{}, err
 	}
-	focusTypesOutput := make([]FocusTypesOutput, len(focusTypes))
+	focusTypesOutput := make([]FocusTypeOutput, len(focusTypes))
 	for i, ft := range focusTypes {
-		focusTypesOutput[i] = FocusTypesOutput{
+		focusTypesOutput[i] = FocusTypeOutput{
 			ID:   ft.ID,
 			Name: ft.Name,
 		}
@@ -95,17 +89,18 @@ func (s *UserProfileService) GetProfile(ctx context.Context, userID int32) (Crea
 
 	userInterests, err := s.q.GetUserInterests(ctx, profile.ProfileID)
 	if err != nil {
-		return CreateProfileOutput{}, err
+		return ProfileOutput{}, err
 	}
-	interestsOutput := make([]UserInterestsOutput, len(userInterests))
+	interestsOutput := make([]InterestOutput, len(userInterests))
 	for i, interest := range userInterests {
-		interestsOutput[i] = UserInterestsOutput{
+		interestsOutput[i] = InterestOutput{
 			ID:   interest.ID,
 			Name: interest.Name,
 		}
 	}
-	return CreateProfileOutput{
+	return ProfileOutput{
 		UserID:     profile.UserID,
+		Name:       profile.Name,
 		Email:      profile.Email,
 		ProfileID:  profile.ProfileID,
 		DepthLevel: profile.DepthLevel,

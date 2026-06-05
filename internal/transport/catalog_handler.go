@@ -2,16 +2,24 @@ package transport
 
 import (
 	"api-cultura-conecta/internal/service"
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type CatalogHandler struct {
-	svc *service.CatalogService
+type CatalogService interface {
+	GetFocusTypes(ctx context.Context) ([]service.FocusTypeOutput, error)
+	CreateFocusType(ctx context.Context, input service.FocusTypeInput) (service.FocusTypeOutput, error)
+	GetInterests(ctx context.Context) ([]service.InterestOutput, error)
+	CreateInterest(ctx context.Context, input service.InterestInput) (service.InterestOutput, error)
 }
 
-func NewCatalogHandler(svc *service.CatalogService) *CatalogHandler {
+type CatalogHandler struct {
+	svc CatalogService
+}
+
+func NewCatalogHandler(svc CatalogService) *CatalogHandler {
 	return &CatalogHandler{
 		svc: svc,
 	}

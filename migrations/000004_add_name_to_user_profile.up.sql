@@ -1,0 +1,2 @@
+ALTER TABLE user_profiles
+ADD COLUMN name VARCHAR(255) NOT NULL DEFAULT 'Unnamed User';

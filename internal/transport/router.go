@@ -7,6 +7,8 @@ func RegisterRoutes(
 	auth *AuthHandler,
 	user *UserProfileHandler,
 	catalog *CatalogHandler,
+	culturalWorks *CulturalWorksHandler,
+	group *GroupHandler,
 ) {
 	v1 := r.Group("/api/v1")
 	authG := v1.Group("/auth")
@@ -27,5 +29,14 @@ func RegisterRoutes(
 	{
 		focusTG.GET("", catalog.GetFocusTypes)
 		focusTG.POST("", catalog.CreateFocusType)
+	}
+	culturalG := v1.Group("/cultural-works")
+	{
+		culturalG.GET("", culturalWorks.GetCulturalWorks)
+		culturalG.POST("", culturalWorks.CreateCulturalWork)
+	}
+	groupG := v1.Group("/groups")
+	{
+		groupG.POST("", group.CreateGroup)
 	}
 }

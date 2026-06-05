@@ -28,18 +28,19 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int32, 
 }
 
 const createUserProfile = `-- name: CreateUserProfile :one
-INSERT INTO user_profiles (user_id, depth_level)
-VALUES ($1, $2)
+INSERT INTO user_profiles (user_id, name, depth_level)
+VALUES ($1, $2, $3)
 RETURNING id
 `
 
 type CreateUserProfileParams struct {
 	UserID     int32  `json:"user_id"`
+	Name       string `json:"name"`
 	DepthLevel string `json:"depth_level"`
 }
 
 func (q *Queries) CreateUserProfile(ctx context.Context, arg CreateUserProfileParams) (int32, error) {
-	row := q.db.QueryRow(ctx, createUserProfile, arg.UserID, arg.DepthLevel)
+	row := q.db.QueryRow(ctx, createUserProfile, arg.UserID, arg.Name, arg.DepthLevel)
 	var id int32
 	err := row.Scan(&id)
 	return id, err
@@ -64,7 +65,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserProfileByUserId = `-- name: GetUserProfileByUserId :one
-SELECT u.id as user_id, upf.id as profile_id, u.email, upf.depth_level
+SELECT u.id as user_id, upf.id as profile_id, u.email, upf.name, upf.depth_level
 FROM user_profiles upf
          JOIN users u ON upf.user_id = u.id
 WHERE u.id = $1
@@ -74,6 +75,7 @@ type GetUserProfileByUserIdRow struct {
 	UserID     int32  `json:"user_id"`
 	ProfileID  int32  `json:"profile_id"`
 	Email      string `json:"email"`
+	Name       string `json:"name"`
 	DepthLevel string `json:"depth_level"`
 }
 
@@ -84,6 +86,7 @@ func (q *Queries) GetUserProfileByUserId(ctx context.Context, id int32) (GetUser
 		&i.UserID,
 		&i.ProfileID,
 		&i.Email,
+		&i.Name,
 		&i.DepthLevel,
 	)
 	return i, err

@@ -17,7 +17,6 @@ type CulturalWork struct {
 	ID         int32     `json:"id"`
 	Title      string    `json:"title"`
 	CategoryID int32     `json:"category_id"`
-	ExternalID *string   `json:"external_id"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -93,6 +92,7 @@ type UserProfile struct {
 	UserID     int32     `json:"user_id"`
 	DepthLevel string    `json:"depth_level"`
 	UpdatedAt  time.Time `json:"updated_at"`
+	Name       string    `json:"name"`
 }
 
 type UsersFocusType struct {

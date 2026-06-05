@@ -9,12 +9,12 @@ FROM users
 WHERE email = $1;
 
 -- name: CreateUserProfile :one
-INSERT INTO user_profiles (user_id, depth_level)
-VALUES ($1, $2)
+INSERT INTO user_profiles (user_id, name, depth_level)
+VALUES ($1, $2, $3)
 RETURNING id;
 
 -- name: GetUserProfileByUserId :one
-SELECT u.id as user_id, upf.id as profile_id, u.email, upf.depth_level
+SELECT u.id as user_id, upf.id as profile_id, u.email, upf.name, upf.depth_level
 FROM user_profiles upf
          JOIN users u ON upf.user_id = u.id
 WHERE u.id = $1;
