@@ -7,6 +7,14 @@ type SuccessResponse[T any] struct {
 	Data T `json:"data"`
 }
 
+// PaginatedOutput wraps a paginated list result.
+type PaginatedOutput[T any] struct {
+	Items      []T   `json:"items"`
+	TotalCount int64 `json:"total_count"`
+	Page       int32 `json:"page"`
+	Limit      int32 `json:"limit"`
+}
+
 // FieldError describes a validation error on a specific request field.
 type FieldError struct {
 	Field   string `json:"field"`

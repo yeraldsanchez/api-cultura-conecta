@@ -37,6 +37,7 @@ func RegisterRoutes(
 	}
 	groupG := v1.Group("/groups")
 	{
+		groupG.GET("", group.ListGroups)
 		groupG.POST("", group.CreateGroup)
 	}
 }
