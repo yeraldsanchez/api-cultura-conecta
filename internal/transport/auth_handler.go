@@ -2,13 +2,19 @@ package transport
 
 import (
 	"api-cultura-conecta/internal/service"
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
+type AuthService interface {
+	Register(ctx context.Context, input service.CreateUserInput) (*int32, error)
+	Login(ctx context.Context, input service.LoginInput) (string, error)
+}
+
 type AuthHandler struct {
-	svc *service.AuthService
+	svc AuthService
 }
 
 type RegisterRequest struct {
@@ -21,7 +27,7 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-func NewAuthHandler(svc *service.AuthService) *AuthHandler {
+func NewAuthHandler(svc AuthService) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 

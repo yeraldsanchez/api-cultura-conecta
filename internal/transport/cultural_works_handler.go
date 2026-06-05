@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"context"
 	"net/http"
 
 	"api-cultura-conecta/internal/service"
@@ -8,11 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type CulturalWorksHandler struct {
-	culturalWorksService *service.CulturalWorksService
+type CulturalWorksService interface {
+	CreateCulturalWork(ctx context.Context, input service.CreateCulturalWorkInput) (service.CreateCulturalWorkOutput, error)
+	GetCulturalWorks(ctx context.Context) ([]service.CreateCulturalWorkOutput, error)
 }
 
-func NewCulturalWorksHandler(culturalWorksService *service.CulturalWorksService) *CulturalWorksHandler {
+type CulturalWorksHandler struct {
+	culturalWorksService CulturalWorksService
+}
+
+func NewCulturalWorksHandler(culturalWorksService CulturalWorksService) *CulturalWorksHandler {
 	return &CulturalWorksHandler{
 		culturalWorksService: culturalWorksService,
 	}

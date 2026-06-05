@@ -2,16 +2,21 @@ package transport
 
 import (
 	"api-cultura-conecta/internal/service"
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type UserProfileHandler struct {
-	svc *service.UserProfileService
+type UserProfileService interface {
+	Create(ctx context.Context, input service.CreateProfileInput) (service.ProfileOutput, error)
 }
 
-func NewUserProfileHandler(svc *service.UserProfileService) *UserProfileHandler {
+type UserProfileHandler struct {
+	svc UserProfileService
+}
+
+func NewUserProfileHandler(svc UserProfileService) *UserProfileHandler {
 	return &UserProfileHandler{
 		svc: svc,
 	}

@@ -2,16 +2,21 @@ package transport
 
 import (
 	"api-cultura-conecta/internal/service"
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type GroupHandler struct {
-	svc *service.GroupService
+type GroupService interface {
+	CreateGroup(ctx context.Context, input service.CreateGroupInput) (service.GroupOutput, error)
 }
 
-func NewGroupHandler(svc *service.GroupService) *GroupHandler {
+type GroupHandler struct {
+	svc GroupService
+}
+
+func NewGroupHandler(svc GroupService) *GroupHandler {
 	return &GroupHandler{svc: svc}
 }
 
