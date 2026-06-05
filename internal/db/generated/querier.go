@@ -12,6 +12,7 @@ type Querier interface {
 	AssignFocusTypeToGroup(ctx context.Context, arg AssignFocusTypeToGroupParams) error
 	AssignFocusTypeToUser(ctx context.Context, arg AssignFocusTypeToUserParams) error
 	AssignInterestToUser(ctx context.Context, arg AssignInterestToUserParams) error
+	CountGroups(ctx context.Context, arg CountGroupsParams) (int64, error)
 	CreateCategory(ctx context.Context, name string) (Category, error)
 	CreateCulturalWork(ctx context.Context, arg CreateCulturalWorkParams) (CreateCulturalWorkRow, error)
 	CreateFocusType(ctx context.Context, name string) (FocusType, error)
@@ -27,6 +28,7 @@ type Querier interface {
 	GetUserFocusTypes(ctx context.Context, profileID int32) ([]FocusType, error)
 	GetUserInterests(ctx context.Context, profileID int32) ([]Category, error)
 	GetUserProfileByUserId(ctx context.Context, id int32) (GetUserProfileByUserIdRow, error)
+	ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListGroupsRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

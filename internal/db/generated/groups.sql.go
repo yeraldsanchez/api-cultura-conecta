@@ -25,6 +25,42 @@ func (q *Queries) AssignFocusTypeToGroup(ctx context.Context, arg AssignFocusTyp
 	return err
 }
 
+const countGroups = `-- name: CountGroups :one
+SELECT COUNT(DISTINCT g.id)
+FROM groups g
+WHERE ($1::bigint IS NULL OR g.work_id = $1)
+AND ($2::text IS NULL OR g.name ILIKE '%' || $2 || '%')
+AND ($3::text IS NULL OR g.depth_level ILIKE '%' || $3 || '%')
+AND (
+    $4::integer[] IS NULL
+    OR cardinality($4::integer[]) = 0
+    OR EXISTS (
+        SELECT 1 FROM groups_focus_types gft
+        WHERE gft.group_id = g.id
+          AND gft.focus_type_id = ANY($4::integer[])
+    )
+)
+`
+
+type CountGroupsParams struct {
+	WorkID       *int64  `json:"work_id"`
+	Name         *string `json:"name"`
+	DepthLevel   *string `json:"depth_level"`
+	FocusTypeIds []int32 `json:"focus_type_ids"`
+}
+
+func (q *Queries) CountGroups(ctx context.Context, arg CountGroupsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countGroups,
+		arg.WorkID,
+		arg.Name,
+		arg.DepthLevel,
+		arg.FocusTypeIds,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createGroup = `-- name: CreateGroup :one
 INSERT INTO groups (work_id, created_by, name, description, depth_level)
 VALUES ($1, $2, $3, $4, $5)
@@ -53,8 +89,15 @@ func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (int32
 }
 
 const getGroupByID = `-- name: GetGroupByID :one
-SELECT g.id, g.work_id, g.created_by, g.name, g.description, g.depth_level, g.created_at,
-       cw.title as work_title, up.name as created_by_name
+SELECT g.id,
+       g.work_id,
+       g.created_by,
+       g.name,
+       g.description,
+       g.depth_level,
+       g.created_at,
+       cw.title as work_title,
+       up.name  as created_by_name
 FROM groups g
          JOIN cultural_works cw ON g.work_id = cw.id
          JOIN users u ON g.created_by = u.id
@@ -108,6 +151,101 @@ func (q *Queries) GetGroupFocusTypes(ctx context.Context, groupID int32) ([]Focu
 	for rows.Next() {
 		var i FocusType
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGroups = `-- name: ListGroups :many
+SELECT g.id,
+       g.work_id,
+       g.created_by,
+       g.name,
+       g.description,
+       g.depth_level,
+       g.created_at,
+       cw.title as work_title,
+       up.name  as created_by_name,
+       JSONB_AGG(
+           JSONB_BUILD_OBJECT('id', ft.id, 'name', ft.name)
+       ) FILTER (WHERE ft.id IS NOT NULL) AS focus_types
+FROM groups g
+         JOIN cultural_works cw ON g.work_id = cw.id
+         JOIN users u ON g.created_by = u.id
+         LEFT JOIN user_profiles up ON u.id = up.user_id
+         LEFT JOIN groups_focus_types gft ON gft.group_id = g.id
+         LEFT JOIN focus_types ft ON ft.id = gft.focus_type_id
+WHERE ($1::bigint IS NULL OR g.work_id = $1)
+AND ($2::text IS NULL OR g.name ILIKE '%' || $2 || '%')
+AND ($3::text IS NULL OR g.depth_level ILIKE '%' || $3 || '%')
+AND (
+    $4::integer[] IS NULL
+    OR cardinality($4::integer[]) = 0
+    OR EXISTS (
+        SELECT 1 FROM groups_focus_types gft2
+        WHERE gft2.group_id = g.id
+          AND gft2.focus_type_id = ANY($4::integer[])
+    )
+)
+GROUP BY g.id, cw.title, up.name
+LIMIT $6 OFFSET $5
+`
+
+type ListGroupsParams struct {
+	WorkID       *int64  `json:"work_id"`
+	Name         *string `json:"name"`
+	DepthLevel   *string `json:"depth_level"`
+	FocusTypeIds []int32 `json:"focus_type_ids"`
+	Offset       int32   `json:"offset"`
+	Limit        int32   `json:"limit"`
+}
+
+type ListGroupsRow struct {
+	ID            int32     `json:"id"`
+	WorkID        int32     `json:"work_id"`
+	CreatedBy     int32     `json:"created_by"`
+	Name          string    `json:"name"`
+	Description   *string   `json:"description"`
+	DepthLevel    string    `json:"depth_level"`
+	CreatedAt     time.Time `json:"created_at"`
+	WorkTitle     string    `json:"work_title"`
+	CreatedByName *string   `json:"created_by_name"`
+	FocusTypes    []byte    `json:"focus_types"`
+}
+
+func (q *Queries) ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListGroupsRow, error) {
+	rows, err := q.db.Query(ctx, listGroups,
+		arg.WorkID,
+		arg.Name,
+		arg.DepthLevel,
+		arg.FocusTypeIds,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGroupsRow{}
+	for rows.Next() {
+		var i ListGroupsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkID,
+			&i.CreatedBy,
+			&i.Name,
+			&i.Description,
+			&i.DepthLevel,
+			&i.CreatedAt,
+			&i.WorkTitle,
+			&i.CreatedByName,
+			&i.FocusTypes,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
