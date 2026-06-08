@@ -1,6 +1,7 @@
 package service
 
 import (
+	"api-cultura-conecta/internal/apperrors"
 	db "api-cultura-conecta/internal/db/generated"
 	"context"
 	"encoding/json"
@@ -49,7 +50,7 @@ func (s *GroupService) CreateGroup(ctx context.Context, input CreateGroupInput) 
 			DepthLevel:  input.DepthLevel,
 		})
 		if err != nil {
-			return err
+			return apperrors.FromPgx(err, apperrors.GroupsConstraints)
 		}
 		for _, id := range input.CategoriesIDs {
 			err = q.AssignFocusTypeToGroup(ctx, db.AssignFocusTypeToGroupParams{
@@ -57,7 +58,7 @@ func (s *GroupService) CreateGroup(ctx context.Context, input CreateGroupInput) 
 				FocusTypeID: id,
 			})
 			if err != nil {
-				return err
+				return apperrors.FromPgx(err, apperrors.GroupsFocusTypesConstraints)
 			}
 		}
 		return nil
@@ -131,7 +132,7 @@ func (s *GroupService) ListGroups(ctx context.Context, input ListGroupsInput) (L
 func (s *GroupService) GetGroup(ctx context.Context, groupID int32) (GroupOutput, error) {
 	group, err := s.q.GetGroupByID(ctx, groupID)
 	if err != nil {
-		return GroupOutput{}, err
+		return GroupOutput{}, apperrors.FromPgx(err, nil)
 	}
 	categories, err := s.q.GetGroupFocusTypes(ctx, groupID)
 	if err != nil {

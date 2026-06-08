@@ -44,7 +44,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Password: req.Password,
 	})
 	if err != nil {
-		FailErr(c, http.StatusInternalServerError, err, "Error al registrar el usuario.")
+		RespondError(c, err, "Error al registrar el usuario.")
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		Password: req.Password,
 	})
 	if err != nil {
-		Fail(c, http.StatusUnauthorized, "Unauthorized", "Credenciales inválidas.")
+		RespondError(c, err, "Credenciales inválidas.")
 		return
 	}
 	OK(c, http.StatusOK, gin.H{"token": token})

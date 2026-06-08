@@ -1,6 +1,7 @@
 package service
 
 import (
+	"api-cultura-conecta/internal/apperrors"
 	db "api-cultura-conecta/internal/db/generated"
 	"context"
 )
@@ -49,7 +50,7 @@ func (s *CatalogService) GetFocusTypes(ctx context.Context) ([]FocusTypeOutput, 
 func (s *CatalogService) CreateFocusType(ctx context.Context, input FocusTypeInput) (FocusTypeOutput, error) {
 	focusType, err := s.q.CreateFocusType(ctx, input.Name)
 	if err != nil {
-		return FocusTypeOutput{}, err
+		return FocusTypeOutput{}, apperrors.FromPgx(err, apperrors.FocusTypesConstraints)
 	}
 	return FocusTypeOutput{
 		ID:   focusType.ID,
@@ -76,7 +77,7 @@ func (s *CatalogService) GetInterests(ctx context.Context) ([]InterestOutput, er
 func (s *CatalogService) CreateInterest(ctx context.Context, input InterestInput) (InterestOutput, error) {
 	interest, err := s.q.CreateCategory(ctx, input.Name)
 	if err != nil {
-		return InterestOutput{}, err
+		return InterestOutput{}, apperrors.FromPgx(err, apperrors.CategoriesConstraints)
 	}
 	return InterestOutput{
 		ID:   interest.ID,

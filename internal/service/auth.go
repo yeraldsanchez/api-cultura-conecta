@@ -1,14 +1,13 @@
 package service
 
 import (
+	"api-cultura-conecta/internal/apperrors"
 	db "api-cultura-conecta/internal/db/generated"
 	"context"
-	"errors"
 	"regexp"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,13 +20,13 @@ var (
 func validatePassword(p string) error {
 	switch {
 	case len(p) < 8:
-		return errors.New("la contraseña debe tener al menos 8 caracteres")
+		return apperrors.NewValidationError("la contraseña debe tener al menos 8 caracteres")
 	case !reDigit.MatchString(p):
-		return errors.New("la contraseña debe contener al menos un número")
+		return apperrors.NewValidationError("la contraseña debe contener al menos un número")
 	case !reLetter.MatchString(p):
-		return errors.New("la contraseña debe contener al menos una letra")
+		return apperrors.NewValidationError("la contraseña debe contener al menos una letra")
 	case !reSpecial.MatchString(p):
-		return errors.New("la contraseña debe contener al menos un carácter especial")
+		return apperrors.NewValidationError("la contraseña debe contener al menos un carácter especial")
 	}
 	return nil
 }
@@ -73,7 +72,7 @@ func (s *AuthService) Register(ctx context.Context, input CreateUserInput) (*int
 		PasswordHash: hashStr,
 	})
 	if err != nil {
-		return nil, err
+		return nil, apperrors.FromPgx(err, apperrors.UserConstraints)
 	}
 	return &id, nil
 }
@@ -81,17 +80,13 @@ func (s *AuthService) Register(ctx context.Context, input CreateUserInput) (*int
 func (s *AuthService) Login(ctx context.Context, input LoginInput) (string, error) {
 	user, err := s.q.GetUserByEmail(ctx, input.Email)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", errors.New("invalid email or password")
-		}
-
-		return "", err
+		return "", apperrors.ErrInvalidCredentials
 	}
 	if user.PasswordHash == "" {
-		return "", errors.New("invalid email or password")
+		return "", apperrors.ErrInvalidCredentials
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
-		return "", errors.New("invalid email or password")
+		return "", apperrors.ErrInvalidCredentials
 	}
 	return s.generateToken(user.ID)
 }

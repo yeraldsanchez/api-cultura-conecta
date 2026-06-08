@@ -1,6 +1,7 @@
 package service
 
 import (
+	"api-cultura-conecta/internal/apperrors"
 	db "api-cultura-conecta/internal/db/generated"
 	"context"
 )
@@ -32,7 +33,7 @@ func (s *CulturalWorksService) CreateCulturalWork(ctx context.Context, input Cre
 		ID:    input.CategoryID,
 	})
 	if err != nil {
-		return CreateCulturalWorkOutput{}, err
+		return CreateCulturalWorkOutput{}, apperrors.FromPgx(err, apperrors.CulturalWorksConstraints)
 	}
 	return CreateCulturalWorkOutput{
 		Id:           culturalWork.ID,

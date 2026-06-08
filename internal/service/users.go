@@ -1,6 +1,7 @@
 package service
 
 import (
+	"api-cultura-conecta/internal/apperrors"
 	db "api-cultura-conecta/internal/db/generated"
 	"context"
 
@@ -42,7 +43,7 @@ func (s *UserProfileService) Create(ctx context.Context, input CreateProfileInpu
 			DepthLevel: input.DepthLevel,
 		})
 		if err != nil {
-			return err
+			return apperrors.FromPgx(err, apperrors.ProfilesConstraints)
 		}
 		for _, id := range input.FocusIDs {
 			err = q.AssignFocusTypeToUser(ctx, db.AssignFocusTypeToUserParams{
@@ -50,7 +51,7 @@ func (s *UserProfileService) Create(ctx context.Context, input CreateProfileInpu
 				FocusTypeID: id,
 			})
 			if err != nil {
-				return err
+				return apperrors.FromPgx(err, apperrors.UsersFocusTypesConstraints)
 			}
 		}
 		for _, id := range input.InterestsIDs {
@@ -59,7 +60,7 @@ func (s *UserProfileService) Create(ctx context.Context, input CreateProfileInpu
 				CategoryID: id,
 			})
 			if err != nil {
-				return err
+				return apperrors.FromPgx(err, apperrors.UserInterestsConstraints)
 			}
 		}
 		return nil
@@ -73,7 +74,7 @@ func (s *UserProfileService) Create(ctx context.Context, input CreateProfileInpu
 func (s *UserProfileService) GetProfile(ctx context.Context, userID int32) (ProfileOutput, error) {
 	profile, err := s.q.GetUserProfileByUserId(ctx, userID)
 	if err != nil {
-		return ProfileOutput{}, err
+		return ProfileOutput{}, apperrors.FromPgx(err, nil)
 	}
 	focusTypes, err := s.q.GetUserFocusTypes(ctx, profile.ProfileID)
 	if err != nil {
