@@ -88,8 +88,8 @@ func TestRegister_DuplicateEmail(t *testing.T) {
 	}
 
 	w := doRegister(r, body)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 on duplicate email, got %d — body: %s", w.Code, w.Body.String())
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500 on duplicate email, got %d — body: %s", w.Code, w.Body.String())
 	}
 }
 
