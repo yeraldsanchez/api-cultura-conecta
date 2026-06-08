@@ -75,7 +75,7 @@ func (h *GroupHandler) ListGroups(c *gin.Context) {
 
 	result, err := h.svc.ListGroups(c.Request.Context(), input)
 	if err != nil {
-		Fail(c, http.StatusInternalServerError, "Internal Server Error", "Error al obtener los grupos.")
+		FailErr(c, http.StatusInternalServerError, err, "Error al obtener los grupos.")
 		return
 	}
 
@@ -103,7 +103,7 @@ func (h *GroupHandler) CreateGroup(c *gin.Context) {
 		CategoriesIDs: req.CategoriesIDs,
 	})
 	if err != nil {
-		Fail(c, http.StatusInternalServerError, "Internal Server Error", "Error al crear el grupo.")
+		FailErr(c, http.StatusInternalServerError, err, "Error al crear el grupo.")
 		return
 	}
 	OK(c, http.StatusCreated, gin.H{"group": group})

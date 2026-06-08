@@ -41,7 +41,7 @@ func (h *CulturalWorksHandler) CreateCulturalWork(c *gin.Context) {
 		CategoryID: req.CategoryID,
 	})
 	if err != nil {
-		Fail(c, http.StatusInternalServerError, "Internal Server Error", "Error al crear la obra cultural.")
+		FailErr(c, http.StatusInternalServerError, err, "Error al crear la obra cultural.")
 		return
 	}
 	OK(c, http.StatusCreated, gin.H{"cultural_work": output})
@@ -50,7 +50,7 @@ func (h *CulturalWorksHandler) CreateCulturalWork(c *gin.Context) {
 func (h *CulturalWorksHandler) GetCulturalWorks(c *gin.Context) {
 	output, err := h.culturalWorksService.GetCulturalWorks(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		FailErr(c, http.StatusInternalServerError, err, "Error al obtener las obras culturales.")
 		return
 	}
 	OK(c, http.StatusOK, gin.H{"cultural_works": output})

@@ -42,7 +42,7 @@ func (h *CatalogHandler) CreateFocusType(c *gin.Context) {
 
 	focusType, err := h.svc.CreateFocusType(c.Request.Context(), service.FocusTypeInput{Name: req.Name})
 	if err != nil {
-		Fail(c, http.StatusInternalServerError, "Internal Server Error", "Error al crear el tipo de enfoque.")
+		FailErr(c, http.StatusInternalServerError, err, "Error al crear el tipo de enfoque.")
 		return
 	}
 
@@ -52,7 +52,7 @@ func (h *CatalogHandler) CreateFocusType(c *gin.Context) {
 func (h *CatalogHandler) GetFocusTypes(c *gin.Context) {
 	focusTypes, err := h.svc.GetFocusTypes(c.Request.Context())
 	if err != nil {
-		Fail(c, http.StatusInternalServerError, "Internal Server Error", "Error al obtener los tipos de enfoque.")
+		FailErr(c, http.StatusInternalServerError, err, "Error al obtener los tipos de enfoque.")
 		return
 	}
 	OK(c, http.StatusOK, gin.H{"focus_types": focusTypes})
@@ -67,7 +67,7 @@ func (h *CatalogHandler) CreateInterest(c *gin.Context) {
 
 	interest, err := h.svc.CreateInterest(c.Request.Context(), service.InterestInput{Name: req.Name})
 	if err != nil {
-		Fail(c, http.StatusInternalServerError, "Internal Server Error", "Error al crear el interés.")
+		FailErr(c, http.StatusInternalServerError, err, "Error al crear el interés.")
 		return
 	}
 	OK(c, http.StatusCreated, gin.H{"interest": interest})
@@ -76,7 +76,7 @@ func (h *CatalogHandler) CreateInterest(c *gin.Context) {
 func (h *CatalogHandler) GetInterests(c *gin.Context) {
 	interests, err := h.svc.GetInterests(c.Request.Context())
 	if err != nil {
-		Fail(c, http.StatusInternalServerError, "Internal Server Error", "Error al obtener los intereses.")
+		FailErr(c, http.StatusInternalServerError, err, "Error al obtener los intereses.")
 		return
 	}
 	OK(c, http.StatusOK, gin.H{"interests": interests})

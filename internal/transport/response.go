@@ -1,6 +1,12 @@
 package transport
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
+	"github.com/gin-gonic/gin"
+)
 
 // SuccessResponse wraps any successful API payload.
 type SuccessResponse[T any] struct {
@@ -39,6 +45,29 @@ func Fail(c *gin.Context, status int, errText, message string, details ...FieldE
 	c.JSON(status, ErrorResponse{
 		Status:  status,
 		Error:   errText,
+		Message: message,
+		Details: details,
+	})
+}
+
+// FailErr is like Fail but accepts the real Go error so Sentry can capture the
+// full error message and stack trace. The client still receives only the generic
+// HTTP status text — the internal error never leaves the server.
+func FailErr(c *gin.Context, status int, err error, message string, details ...FieldError) {
+	if status >= 500 {
+		if hub := sentrygin.GetHubFromContext(c); hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetLevel(sentry.LevelError)
+				scope.SetTag("endpoint", c.FullPath())
+				scope.SetTag("method", c.Request.Method)
+				hub.CaptureException(err)
+			})
+		}
+	}
+
+	c.JSON(status, ErrorResponse{
+		Status:  status,
+		Error:   http.StatusText(status),
 		Message: message,
 		Details: details,
 	})

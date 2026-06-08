@@ -1,6 +1,30 @@
 package transport
 
-import "github.com/gin-gonic/gin"
+import (
+	"bytes"
+	"io"
+	"net/http"
+
+	sentrygin "github.com/getsentry/sentry-go/gin"
+	"github.com/gin-gonic/gin"
+)
+
+// bodyCapture reads the request body for POST/PUT/PATCH requests and attaches
+// it to the Sentry scope so it's visible on error events.
+func bodyCapture() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.Body != nil && c.Request.Method != http.MethodGet {
+			bodyBytes, err := io.ReadAll(io.LimitReader(c.Request.Body, 10_000))
+			if err == nil {
+				c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+				if hub := sentrygin.GetHubFromContext(c); hub != nil {
+					hub.Scope().SetRequestBody(bodyBytes)
+				}
+			}
+		}
+		c.Next()
+	}
+}
 
 func RegisterRoutes(
 	r *gin.Engine,
@@ -11,6 +35,7 @@ func RegisterRoutes(
 	group *GroupHandler,
 ) {
 	v1 := r.Group("/api/v1")
+	v1.Use(bodyCapture())
 	authG := v1.Group("/auth")
 	{
 		authG.POST("/register", auth.Register)

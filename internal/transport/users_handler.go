@@ -46,8 +46,7 @@ func (h *UserProfileHandler) CreateProfile(c *gin.Context) {
 		InterestsIDs: req.InterestsIDs,
 	})
 	if err != nil {
-		Fail(c, http.StatusInternalServerError, "Bad Request",
-			"Error al crear el perfil del usuario.")
+		FailErr(c, http.StatusInternalServerError, err, "Error al crear el perfil del usuario.")
 		return
 	}
 
