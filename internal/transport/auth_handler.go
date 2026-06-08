@@ -44,8 +44,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Password: req.Password,
 	})
 	if err != nil {
-		Fail(c, http.StatusInternalServerError, "Bad Request",
-			"Error al registrar el usuario.")
+		FailErr(c, http.StatusInternalServerError, err, "Error al registrar el usuario.")
 		return
 	}
 
