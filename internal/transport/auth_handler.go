@@ -44,9 +44,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Password: req.Password,
 	})
 	if err != nil {
-		Fail(c, http.StatusBadRequest, "Bad Request",
-			"Error al registrar el usuario.",
-			FieldError{Field: "email", Message: "Este correo electrónico ya está registrado."})
+		Fail(c, http.StatusInternalServerError, "Bad Request",
+			"Error al registrar el usuario.")
 		return
 	}
 
