@@ -86,3 +86,18 @@ func (q *Queries) GetUserFocusTypes(ctx context.Context, profileID int32) ([]Foc
 	}
 	return items, nil
 }
+
+const removeFocusTypeFromUser = `-- name: RemoveFocusTypeFromUser :exec
+DELETE FROM users_focus_types
+WHERE profile_id = $1 AND focus_type_id = $2
+`
+
+type RemoveFocusTypeFromUserParams struct {
+	ProfileID   int32 `json:"profile_id"`
+	FocusTypeID int32 `json:"focus_type_id"`
+}
+
+func (q *Queries) RemoveFocusTypeFromUser(ctx context.Context, arg RemoveFocusTypeFromUserParams) error {
+	_, err := q.db.Exec(ctx, removeFocusTypeFromUser, arg.ProfileID, arg.FocusTypeID)
+	return err
+}

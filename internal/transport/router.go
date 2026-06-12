@@ -44,6 +44,11 @@ func RegisterRoutes(
 	userG := v1.Group("/users")
 	{
 		userG.POST("", user.CreateProfile)
+		userG.PATCH("/:user_id", user.PatchProfile)
+		userG.POST("/:user_id/interests", user.AddInterest)
+		userG.DELETE("/:user_id/interests/:category_id", user.RemoveInterest)
+		userG.POST("/:user_id/focus-types", user.AddFocusType)
+		userG.DELETE("/:user_id/focus-types/:focus_type_id", user.RemoveFocusType)
 	}
 	interestG := v1.Group("/interests")
 	{

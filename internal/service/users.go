@@ -71,6 +71,96 @@ func (s *UserProfileService) Create(ctx context.Context, input CreateProfileInpu
 	return s.GetProfile(ctx, input.UserID)
 }
 
+type UpdateProfileInput struct {
+	UserID     int32
+	Name       *string
+	DepthLevel *string
+}
+
+func (s *UserProfileService) UpdateProfile(ctx context.Context, input UpdateProfileInput) (ProfileOutput, error) {
+	profile, err := s.q.GetUserProfileByUserId(ctx, input.UserID)
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, nil)
+	}
+	name := profile.Name
+	if input.Name != nil {
+		name = *input.Name
+	}
+	depthLevel := profile.DepthLevel
+	if input.DepthLevel != nil {
+		depthLevel = *input.DepthLevel
+	}
+	_, err = s.q.UpdateUserProfile(ctx, db.UpdateUserProfileParams{
+		Column1: name,
+		Column2: depthLevel,
+		UserID:  input.UserID,
+	})
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, nil)
+	}
+	return s.GetProfile(ctx, input.UserID)
+}
+
+func (s *UserProfileService) AddInterest(ctx context.Context, userID int32, categoryID int32) (ProfileOutput, error) {
+	profile, err := s.q.GetUserProfileByUserId(ctx, userID)
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, nil)
+	}
+	err = s.q.AssignInterestToUser(ctx, db.AssignInterestToUserParams{
+		ProfileID:  profile.ProfileID,
+		CategoryID: categoryID,
+	})
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, apperrors.UserInterestsConstraints)
+	}
+	return s.GetProfile(ctx, userID)
+}
+
+func (s *UserProfileService) RemoveInterest(ctx context.Context, userID int32, categoryID int32) (ProfileOutput, error) {
+	profile, err := s.q.GetUserProfileByUserId(ctx, userID)
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, nil)
+	}
+	err = s.q.RemoveInterestFromUser(ctx, db.RemoveInterestFromUserParams{
+		ProfileID:  profile.ProfileID,
+		CategoryID: categoryID,
+	})
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, nil)
+	}
+	return s.GetProfile(ctx, userID)
+}
+
+func (s *UserProfileService) AddFocusType(ctx context.Context, userID int32, focusTypeID int32) (ProfileOutput, error) {
+	profile, err := s.q.GetUserProfileByUserId(ctx, userID)
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, nil)
+	}
+	err = s.q.AssignFocusTypeToUser(ctx, db.AssignFocusTypeToUserParams{
+		ProfileID:   profile.ProfileID,
+		FocusTypeID: focusTypeID,
+	})
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, apperrors.UsersFocusTypesConstraints)
+	}
+	return s.GetProfile(ctx, userID)
+}
+
+func (s *UserProfileService) RemoveFocusType(ctx context.Context, userID int32, focusTypeID int32) (ProfileOutput, error) {
+	profile, err := s.q.GetUserProfileByUserId(ctx, userID)
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, nil)
+	}
+	err = s.q.RemoveFocusTypeFromUser(ctx, db.RemoveFocusTypeFromUserParams{
+		ProfileID:   profile.ProfileID,
+		FocusTypeID: focusTypeID,
+	})
+	if err != nil {
+		return ProfileOutput{}, apperrors.FromPgx(err, nil)
+	}
+	return s.GetProfile(ctx, userID)
+}
+
 func (s *UserProfileService) GetProfile(ctx context.Context, userID int32) (ProfileOutput, error) {
 	profile, err := s.q.GetUserProfileByUserId(ctx, userID)
 	if err != nil {

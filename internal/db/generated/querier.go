@@ -29,6 +29,9 @@ type Querier interface {
 	GetUserInterests(ctx context.Context, profileID int32) ([]Category, error)
 	GetUserProfileByUserId(ctx context.Context, id int32) (GetUserProfileByUserIdRow, error)
 	ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListGroupsRow, error)
+	RemoveFocusTypeFromUser(ctx context.Context, arg RemoveFocusTypeFromUserParams) error
+	RemoveInterestFromUser(ctx context.Context, arg RemoveInterestFromUserParams) error
+	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UpdateUserProfileRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

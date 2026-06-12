@@ -86,3 +86,18 @@ func (q *Queries) GetUserInterests(ctx context.Context, profileID int32) ([]Cate
 	}
 	return items, nil
 }
+
+const removeInterestFromUser = `-- name: RemoveInterestFromUser :exec
+DELETE FROM user_interests
+WHERE profile_id = $1 AND category_id = $2
+`
+
+type RemoveInterestFromUserParams struct {
+	ProfileID  int32 `json:"profile_id"`
+	CategoryID int32 `json:"category_id"`
+}
+
+func (q *Queries) RemoveInterestFromUser(ctx context.Context, arg RemoveInterestFromUserParams) error {
+	_, err := q.db.Exec(ctx, removeInterestFromUser, arg.ProfileID, arg.CategoryID)
+	return err
+}

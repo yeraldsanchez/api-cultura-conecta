@@ -14,3 +14,7 @@ VALUES ($1, $2);
 SELECT ft.* FROM focus_types ft
 JOIN users_focus_types uft ON ft.id = uft.focus_type_id
 WHERE uft.profile_id = $1;
+
+-- name: RemoveFocusTypeFromUser :exec
+DELETE FROM users_focus_types
+WHERE profile_id = $1 AND focus_type_id = $2;
