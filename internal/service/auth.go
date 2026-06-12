@@ -4,6 +4,9 @@ import (
 	"api-cultura-conecta/internal/apperrors"
 	db "api-cultura-conecta/internal/db/generated"
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"regexp"
 	"time"
 
@@ -32,16 +35,18 @@ func validatePassword(p string) error {
 }
 
 type AuthService struct {
-	q         db.Querier
-	jwtSecret []byte
-	tokenTTL  time.Duration
+	q               db.Querier
+	jwtSecret       []byte
+	tokenTTL        time.Duration
+	refreshTokenTTL time.Duration
 }
 
 func NewAuthService(q db.Querier, jwtSecret string) *AuthService {
 	return &AuthService{
-		q:         q,
-		jwtSecret: []byte(jwtSecret),
-		tokenTTL:  24 * time.Hour,
+		q:               q,
+		jwtSecret:       []byte(jwtSecret),
+		tokenTTL:        15 * time.Minute,
+		refreshTokenTTL: 7 * 24 * time.Hour,
 	}
 }
 
@@ -77,18 +82,75 @@ func (s *AuthService) Register(ctx context.Context, input CreateUserInput) (*int
 	return &id, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, input LoginInput) (string, error) {
+func (s *AuthService) Login(ctx context.Context, input LoginInput) (string, string, error) {
 	user, err := s.q.GetUserByEmail(ctx, input.Email)
+	if err != nil {
+		return "", "", apperrors.ErrInvalidCredentials
+	}
+	if user.PasswordHash == "" {
+		return "", "", apperrors.ErrInvalidCredentials
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+		return "", "", apperrors.ErrInvalidCredentials
+	}
+
+	accessToken, err := s.generateToken(user.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshToken, err := s.createRefreshToken(ctx, user.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
+}
+
+func (s *AuthService) RefreshAccessToken(ctx context.Context, refreshToken string) (string, error) {
+	tokenHash := hashToken(refreshToken)
+	row, err := s.q.GetRefreshTokenByHash(ctx, tokenHash)
 	if err != nil {
 		return "", apperrors.ErrInvalidCredentials
 	}
-	if user.PasswordHash == "" {
-		return "", apperrors.ErrInvalidCredentials
+	return s.generateToken(row.UserID)
+}
+
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	tokenHash := hashToken(refreshToken)
+	return s.q.RevokeRefreshToken(ctx, tokenHash)
+}
+
+func (s *AuthService) ValidateAccessToken(tokenStr string) (int32, error) {
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, apperrors.ErrUnauthorized
+		}
+		return s.jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		return 0, apperrors.ErrUnauthorized
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
-		return "", apperrors.ErrInvalidCredentials
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, apperrors.ErrUnauthorized
 	}
-	return s.generateToken(user.ID)
+
+	sub, err := claims.GetSubject()
+	if err != nil {
+		return 0, apperrors.ErrUnauthorized
+	}
+
+	// jwt.MapClaims encodes numeric values as float64
+	subFloat, ok := claims["sub"].(float64)
+	if !ok {
+		// fallback: try parsing from string representation
+		_ = sub
+		return 0, apperrors.ErrUnauthorized
+	}
+
+	return int32(subFloat), nil
 }
 
 func (s *AuthService) generateToken(userID int32) (string, error) {
@@ -101,3 +163,30 @@ func (s *AuthService) generateToken(userID int32) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.jwtSecret)
 }
+
+func (s *AuthService) createRefreshToken(ctx context.Context, userID int32) (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(raw)
+	tokenHash := hashToken(token)
+
+	_, err := s.q.CreateRefreshToken(ctx, db.CreateRefreshTokenParams{
+		UserID:    userID,
+		TokenHash: tokenHash,
+		ExpiresAt: time.Now().Add(s.refreshTokenTTL),
+	})
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+// ErrUnauthorized is re-exported so middleware can compare without importing apperrors.
+var ErrUnauthorized = apperrors.ErrUnauthorized

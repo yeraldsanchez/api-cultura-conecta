@@ -36,13 +36,19 @@ func RegisterRoutes(
 ) {
 	v1 := r.Group("/api/v1")
 	v1.Use(bodyCapture())
+
 	authG := v1.Group("/auth")
 	{
 		authG.POST("/register", auth.Register)
 		authG.POST("/login", auth.Login)
+		authG.POST("/refresh", auth.RefreshToken)
+		authG.POST("/logout", auth.Logout)
 	}
-	userG := v1.Group("/users")
+
+	protected := v1.Group("")
+	protected.Use(AuthMiddleware(auth.svc))
 	{
+		userG := protected.Group("/users")
 		userG.POST("", user.CreateProfile)
 		userG.PATCH("/:user_id", user.PatchProfile)
 		userG.POST("/:user_id/interests", user.AddInterest)
@@ -50,6 +56,7 @@ func RegisterRoutes(
 		userG.POST("/:user_id/focus-types", user.AddFocusType)
 		userG.DELETE("/:user_id/focus-types/:focus_type_id", user.RemoveFocusType)
 	}
+
 	interestG := v1.Group("/interests")
 	{
 		interestG.GET("", catalog.GetInterests)

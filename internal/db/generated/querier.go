@@ -17,6 +17,7 @@ type Querier interface {
 	CreateCulturalWork(ctx context.Context, arg CreateCulturalWorkParams) (CreateCulturalWorkRow, error)
 	CreateFocusType(ctx context.Context, name string) (FocusType, error)
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (int32, error)
+	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (int32, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (int32, error)
 	CreateUserProfile(ctx context.Context, arg CreateUserProfileParams) (int32, error)
 	GetCategories(ctx context.Context) ([]Category, error)
@@ -24,6 +25,7 @@ type Querier interface {
 	GetFocusTypes(ctx context.Context) ([]FocusType, error)
 	GetGroupByID(ctx context.Context, id int32) (GetGroupByIDRow, error)
 	GetGroupFocusTypes(ctx context.Context, groupID int32) ([]FocusType, error)
+	GetRefreshTokenByHash(ctx context.Context, tokenHash string) (RefreshToken, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserFocusTypes(ctx context.Context, profileID int32) ([]FocusType, error)
 	GetUserInterests(ctx context.Context, profileID int32) ([]Category, error)
@@ -31,6 +33,8 @@ type Querier interface {
 	ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListGroupsRow, error)
 	RemoveFocusTypeFromUser(ctx context.Context, arg RemoveFocusTypeFromUserParams) error
 	RemoveInterestFromUser(ctx context.Context, arg RemoveInterestFromUserParams) error
+	RevokeAllUserRefreshTokens(ctx context.Context, userID int32) error
+	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UpdateUserProfileRow, error)
 }
 
