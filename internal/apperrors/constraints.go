@@ -47,3 +47,9 @@ var UsersFocusTypesConstraints = map[string]error{
 	"users_focus_types_focus_type_id_fkey": ErrFocusTypeNotFound,
 	"users_focus_types_profile_id_fkey":    ErrUserNotFound,
 }
+
+var GroupMembersConstraints = map[string]error{
+	"group_members_pkey":          ErrAlreadyMember,
+	"group_members_group_id_fkey": ErrGroupNotFound,
+	"group_members_user_id_fkey":  ErrUserNotFound,
+}

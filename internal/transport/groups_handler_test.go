@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"api-cultura-conecta/internal/apperrors"
 	"api-cultura-conecta/internal/service"
 	"api-cultura-conecta/internal/transport"
 
@@ -21,6 +22,7 @@ type fakeGroupService struct {
 	listResult    service.ListGroupsOutput
 	listErr       bool
 	capturedInput service.ListGroupsInput
+	joinErr       error
 }
 
 func (f *fakeGroupService) CreateGroup(_ context.Context, input service.CreateGroupInput) (service.GroupOutput, error) {
@@ -44,6 +46,10 @@ func (f *fakeGroupService) ListGroups(_ context.Context, input service.ListGroup
 	return f.listResult, nil
 }
 
+func (f *fakeGroupService) JoinGroup(_ context.Context, _ int32, _ int32) error {
+	return f.joinErr
+}
+
 func newGroupTestRouter(svc transport.GroupService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	h := transport.NewGroupHandler(svc)
@@ -51,6 +57,24 @@ func newGroupTestRouter(svc transport.GroupService) *gin.Engine {
 	r.GET("/api/v1/groups", h.ListGroups)
 	r.POST("/api/v1/groups", h.CreateGroup)
 	return r
+}
+
+func newGroupTestRouterWithAuth(svc transport.GroupService, userID int32) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	h := transport.NewGroupHandler(svc)
+	r := gin.New()
+	r.POST("/api/v1/groups/:group_id/members", func(c *gin.Context) {
+		c.Set(transport.UserIDKey, userID)
+		c.Next()
+	}, h.JoinGroup)
+	return r
+}
+
+func doJoinGroup(r *gin.Engine, groupID string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups/"+groupID+"/members", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
 }
 
 func doListGroups(r *gin.Engine, query string) *httptest.ResponseRecorder {
@@ -247,6 +271,56 @@ func TestCreateGroup_ServiceError(t *testing.T) {
 
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestJoinGroup_Success(t *testing.T) {
+	r := newGroupTestRouterWithAuth(&fakeGroupService{}, 5)
+	w := doJoinGroup(r, "1")
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestJoinGroup_GrupoInexistente(t *testing.T) {
+	svc := &fakeGroupService{joinErr: apperrors.ErrGroupNotFound}
+	r := newGroupTestRouterWithAuth(svc, 5)
+	w := doJoinGroup(r, "9999")
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestJoinGroup_YaEsMiembro(t *testing.T) {
+	svc := &fakeGroupService{joinErr: apperrors.ErrAlreadyMember}
+	r := newGroupTestRouterWithAuth(svc, 5)
+	w := doJoinGroup(r, "1")
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestJoinGroup_ErrorServicio(t *testing.T) {
+	svc := &fakeGroupService{joinErr: errors.New("error inesperado")}
+	r := newGroupTestRouterWithAuth(svc, 5)
+	w := doJoinGroup(r, "1")
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestJoinGroup_GroupIDInvalido(t *testing.T) {
+	r := newGroupTestRouterWithAuth(&fakeGroupService{}, 5)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups/abc/members", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d — body: %s", w.Code, w.Body.String())
 	}
 }
 

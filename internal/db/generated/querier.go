@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) error
 	AssignFocusTypeToGroup(ctx context.Context, arg AssignFocusTypeToGroupParams) error
 	AssignFocusTypeToUser(ctx context.Context, arg AssignFocusTypeToUserParams) error
 	AssignInterestToUser(ctx context.Context, arg AssignInterestToUserParams) error
