@@ -14,3 +14,7 @@ VALUES ($1, $2);
 SELECT c.* FROM categories c
 JOIN user_interests ui ON c.id = ui.category_id
 WHERE ui.profile_id = $1;
+
+-- name: RemoveInterestFromUser :exec
+DELETE FROM user_interests
+WHERE profile_id = $1 AND category_id = $2;

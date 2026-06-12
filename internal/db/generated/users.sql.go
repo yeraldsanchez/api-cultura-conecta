@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -88,6 +89,42 @@ func (q *Queries) GetUserProfileByUserId(ctx context.Context, id int32) (GetUser
 		&i.Email,
 		&i.Name,
 		&i.DepthLevel,
+	)
+	return i, err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+UPDATE user_profiles
+SET
+  name        = COALESCE($1::varchar, name),
+  depth_level = COALESCE($2::varchar, depth_level)
+WHERE user_id = $3
+RETURNING id, user_id, name, depth_level, updated_at
+`
+
+type UpdateUserProfileParams struct {
+	Column1 string `json:"column_1"`
+	Column2 string `json:"column_2"`
+	UserID  int32  `json:"user_id"`
+}
+
+type UpdateUserProfileRow struct {
+	ID         int32     `json:"id"`
+	UserID     int32     `json:"user_id"`
+	Name       string    `json:"name"`
+	DepthLevel string    `json:"depth_level"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UpdateUserProfileRow, error) {
+	row := q.db.QueryRow(ctx, updateUserProfile, arg.Column1, arg.Column2, arg.UserID)
+	var i UpdateUserProfileRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.DepthLevel,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
