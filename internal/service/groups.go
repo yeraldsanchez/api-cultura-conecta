@@ -61,6 +61,14 @@ func (s *GroupService) CreateGroup(ctx context.Context, input CreateGroupInput) 
 				return apperrors.FromPgx(err, apperrors.GroupsFocusTypesConstraints)
 			}
 		}
+		err = q.AddGroupMember(ctx, db.AddGroupMemberParams{
+			GroupID: groupID,
+			UserID:  input.CreatedBy,
+			Role:    "admin",
+		})
+		if err != nil {
+			return apperrors.FromPgx(err, apperrors.GroupMembersConstraints)
+		}
 		return nil
 	})
 	if err != nil {
@@ -127,6 +135,17 @@ func (s *GroupService) ListGroups(ctx context.Context, input ListGroupsInput) (L
 		})
 	}
 	return ListGroupsOutput{Groups: groups, Total: total}, nil
+}
+
+func (s *GroupService) JoinGroup(ctx context.Context, groupID int32, userID int32) error {
+	return withTx(ctx, s.pool, func(q db.Querier) error {
+		err := q.AddGroupMember(ctx, db.AddGroupMemberParams{
+			GroupID: groupID,
+			UserID:  userID,
+			Role:    "member",
+		})
+		return apperrors.FromPgx(err, apperrors.GroupMembersConstraints)
+	})
 }
 
 func (s *GroupService) GetGroup(ctx context.Context, groupID int32) (GroupOutput, error) {

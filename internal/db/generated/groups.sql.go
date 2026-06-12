@@ -10,6 +10,22 @@ import (
 	"time"
 )
 
+const addGroupMember = `-- name: AddGroupMember :exec
+INSERT INTO group_members (group_id, user_id, role)
+VALUES ($1, $2, $3)
+`
+
+type AddGroupMemberParams struct {
+	GroupID int32  `json:"group_id"`
+	UserID  int32  `json:"user_id"`
+	Role    string `json:"role"`
+}
+
+func (q *Queries) AddGroupMember(ctx context.Context, arg AddGroupMemberParams) error {
+	_, err := q.db.Exec(ctx, addGroupMember, arg.GroupID, arg.UserID, arg.Role)
+	return err
+}
+
 const assignFocusTypeToGroup = `-- name: AssignFocusTypeToGroup :exec
 INSERT INTO groups_focus_types (group_id, focus_type_id)
 VALUES ($1, $2)

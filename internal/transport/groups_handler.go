@@ -13,6 +13,7 @@ import (
 type GroupService interface {
 	CreateGroup(ctx context.Context, input service.CreateGroupInput) (service.GroupOutput, error)
 	ListGroups(ctx context.Context, input service.ListGroupsInput) (service.ListGroupsOutput, error)
+	JoinGroup(ctx context.Context, groupID int32, userID int32) error
 }
 
 type GroupHandler struct {
@@ -85,6 +86,20 @@ func (h *GroupHandler) ListGroups(c *gin.Context) {
 		Page:       int32(page),
 		Limit:      int32(limit),
 	})
+}
+
+func (h *GroupHandler) JoinGroup(c *gin.Context) {
+	groupID, err := parsePathInt32(c, "group_id")
+	if err != nil {
+		return
+	}
+	userID := c.MustGet(UserIDKey).(int32)
+
+	if err := h.svc.JoinGroup(c.Request.Context(), groupID, userID); err != nil {
+		RespondError(c, err, "Error al unirse al grupo.")
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (h *GroupHandler) CreateGroup(c *gin.Context) {
