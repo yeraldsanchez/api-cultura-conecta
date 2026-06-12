@@ -11,6 +11,7 @@ import (
 
 type UserProfileService interface {
 	Create(ctx context.Context, input service.CreateProfileInput) (service.ProfileOutput, error)
+	GetProfile(ctx context.Context, userID int32) (service.ProfileOutput, error)
 	UpdateProfile(ctx context.Context, input service.UpdateProfileInput) (service.ProfileOutput, error)
 	AddInterest(ctx context.Context, userID int32, categoryID int32) (service.ProfileOutput, error)
 	RemoveInterest(ctx context.Context, userID int32, categoryID int32) (service.ProfileOutput, error)
@@ -62,6 +63,19 @@ func (h *UserProfileHandler) CreateProfile(c *gin.Context) {
 type PatchProfileRequest struct {
 	Name       *string `json:"name"`
 	DepthLevel *string `json:"depth_level"`
+}
+
+func (h *UserProfileHandler) GetProfile(c *gin.Context) {
+	userID, err := parsePathInt32(c, "user_id")
+	if err != nil {
+		return
+	}
+	profile, err := h.svc.GetProfile(c.Request.Context(), userID)
+	if err != nil {
+		RespondError(c, err, "Error al obtener el perfil del usuario.")
+		return
+	}
+	OK(c, http.StatusOK, gin.H{"profile": profile})
 }
 
 func (h *UserProfileHandler) PatchProfile(c *gin.Context) {

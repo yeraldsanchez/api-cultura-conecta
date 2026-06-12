@@ -50,6 +50,7 @@ func RegisterRoutes(
 	{
 		userG := protected.Group("/users")
 		userG.POST("", user.CreateProfile)
+		userG.GET("/:user_id", user.GetProfile)
 		userG.PATCH("/:user_id", user.PatchProfile)
 		userG.POST("/:user_id/interests", user.AddInterest)
 		userG.DELETE("/:user_id/interests/:category_id", user.RemoveInterest)
