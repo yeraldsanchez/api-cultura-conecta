@@ -75,6 +75,15 @@ type Post struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type RefreshToken struct {
+	ID        int32     `json:"id"`
+	UserID    int32     `json:"user_id"`
+	TokenHash string    `json:"token_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Revoked   bool      `json:"revoked"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type User struct {
 	ID           int32     `json:"id"`
 	Email        string    `json:"email"`

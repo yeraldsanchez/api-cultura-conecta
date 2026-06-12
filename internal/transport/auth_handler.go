@@ -10,7 +10,10 @@ import (
 
 type AuthService interface {
 	Register(ctx context.Context, input service.CreateUserInput) (*int32, error)
-	Login(ctx context.Context, input service.LoginInput) (string, error)
+	Login(ctx context.Context, input service.LoginInput) (accessToken, refreshToken string, err error)
+	RefreshAccessToken(ctx context.Context, refreshToken string) (string, error)
+	Logout(ctx context.Context, refreshToken string) error
+	ValidateAccessToken(tokenStr string) (int32, error)
 }
 
 type AuthHandler struct {
@@ -25,6 +28,14 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
 func NewAuthHandler(svc AuthService) *AuthHandler {
@@ -58,7 +69,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.svc.Login(c.Request.Context(), service.LoginInput{
+	accessToken, refreshToken, err := h.svc.Login(c.Request.Context(), service.LoginInput{
 		Email:    req.Email,
 		Password: req.Password,
 	})
@@ -66,5 +77,44 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		RespondError(c, err, "Credenciales inválidas.")
 		return
 	}
-	OK(c, http.StatusOK, gin.H{"token": token})
+
+	OK(c, http.StatusOK, gin.H{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+		"token_type":    "Bearer",
+	})
+}
+
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	var req RefreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		Fail(c, http.StatusBadRequest, "Bad Request", "El cuerpo de la solicitud es inválido.")
+		return
+	}
+
+	accessToken, err := h.svc.RefreshAccessToken(c.Request.Context(), req.RefreshToken)
+	if err != nil {
+		RespondError(c, err, "Refresh token inválido o expirado.")
+		return
+	}
+
+	OK(c, http.StatusOK, gin.H{
+		"access_token": accessToken,
+		"token_type":   "Bearer",
+	})
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	var req LogoutRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		Fail(c, http.StatusBadRequest, "Bad Request", "El cuerpo de la solicitud es inválido.")
+		return
+	}
+
+	if err := h.svc.Logout(c.Request.Context(), req.RefreshToken); err != nil {
+		RespondError(c, err, "Error al cerrar sesión.")
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }

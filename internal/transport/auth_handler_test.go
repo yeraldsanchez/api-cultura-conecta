@@ -17,7 +17,7 @@ import (
 
 // fakeAuthService implementa transport.AuthService en memoria.
 type fakeAuthService struct {
-	users map[string]string // email → passwordHash
+	users map[string]string // email → password
 }
 
 func newFakeAuthService() *fakeAuthService {
@@ -33,12 +33,30 @@ func (f *fakeAuthService) Register(_ context.Context, input service.CreateUserIn
 	return &id, nil
 }
 
-func (f *fakeAuthService) Login(_ context.Context, input service.LoginInput) (string, error) {
+func (f *fakeAuthService) Login(_ context.Context, input service.LoginInput) (string, string, error) {
 	pw, ok := f.users[input.Email]
 	if !ok || pw != input.Password {
-		return "", errors.New("credenciales inválidas")
+		return "", "", errors.New("credenciales inválidas")
 	}
-	return "fake-token", nil
+	return "fake-access-token", "fake-refresh-token", nil
+}
+
+func (f *fakeAuthService) RefreshAccessToken(_ context.Context, refreshToken string) (string, error) {
+	if refreshToken == "fake-refresh-token" {
+		return "new-fake-access-token", nil
+	}
+	return "", errors.New("refresh token inválido")
+}
+
+func (f *fakeAuthService) Logout(_ context.Context, _ string) error {
+	return nil
+}
+
+func (f *fakeAuthService) ValidateAccessToken(tokenStr string) (int32, error) {
+	if tokenStr == "fake-access-token" {
+		return 1, nil
+	}
+	return 0, errors.New("token inválido")
 }
 
 func newAuthTestRouter(svc transport.AuthService) *gin.Engine {
@@ -47,11 +65,21 @@ func newAuthTestRouter(svc transport.AuthService) *gin.Engine {
 	r := gin.New()
 	r.POST("/api/v1/auth/register", h.Register)
 	r.POST("/api/v1/auth/login", h.Login)
+	r.POST("/api/v1/auth/refresh", h.RefreshToken)
+	r.POST("/api/v1/auth/logout", h.Logout)
 	return r
 }
 
 func doRegister(r *gin.Engine, body string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func doLogin(r *gin.Engine, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -112,5 +140,65 @@ func TestRegister_InvalidFields(t *testing.T) {
 				t.Fatalf("expected 400, got %d — body: %s", w.Code, w.Body.String())
 			}
 		})
+	}
+}
+
+func TestLogin_ReturnsTokenPair(t *testing.T) {
+	svc := newFakeAuthService()
+	r := newAuthTestRouter(svc)
+
+	doRegister(r, `{"email":"user@example.com","password":"Secure1!"}`)
+	w := doLogin(r, `{"email":"user@example.com","password":"Secure1!"}`)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Data struct {
+			AccessToken  string `json:"access_token"`
+			RefreshToken string `json:"refresh_token"`
+			TokenType    string `json:"token_type"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if resp.Data.AccessToken == "" {
+		t.Fatal("expected access_token in response")
+	}
+	if resp.Data.RefreshToken == "" {
+		t.Fatal("expected refresh_token in response")
+	}
+	if resp.Data.TokenType != "Bearer" {
+		t.Fatalf("expected token_type Bearer, got %q", resp.Data.TokenType)
+	}
+}
+
+func TestRefreshToken_Success(t *testing.T) {
+	r := newAuthTestRouter(newFakeAuthService())
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh",
+		strings.NewReader(`{"refresh_token":"fake-refresh-token"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestLogout_Success(t *testing.T) {
+	r := newAuthTestRouter(newFakeAuthService())
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout",
+		strings.NewReader(`{"refresh_token":"fake-refresh-token"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d — body: %s", w.Code, w.Body.String())
 	}
 }
