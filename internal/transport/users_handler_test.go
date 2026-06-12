@@ -30,6 +30,41 @@ func (f *fakeUserProfileService) Create(_ context.Context, input service.CreateP
 	}, nil
 }
 
+func (f *fakeUserProfileService) UpdateProfile(_ context.Context, _ service.UpdateProfileInput) (service.ProfileOutput, error) {
+	if f.err {
+		return service.ProfileOutput{}, errors.New("error de servicio")
+	}
+	return service.ProfileOutput{}, nil
+}
+
+func (f *fakeUserProfileService) AddInterest(_ context.Context, _ int32, _ int32) (service.ProfileOutput, error) {
+	if f.err {
+		return service.ProfileOutput{}, errors.New("error de servicio")
+	}
+	return service.ProfileOutput{}, nil
+}
+
+func (f *fakeUserProfileService) RemoveInterest(_ context.Context, _ int32, _ int32) (service.ProfileOutput, error) {
+	if f.err {
+		return service.ProfileOutput{}, errors.New("error de servicio")
+	}
+	return service.ProfileOutput{}, nil
+}
+
+func (f *fakeUserProfileService) AddFocusType(_ context.Context, _ int32, _ int32) (service.ProfileOutput, error) {
+	if f.err {
+		return service.ProfileOutput{}, errors.New("error de servicio")
+	}
+	return service.ProfileOutput{}, nil
+}
+
+func (f *fakeUserProfileService) RemoveFocusType(_ context.Context, _ int32, _ int32) (service.ProfileOutput, error) {
+	if f.err {
+		return service.ProfileOutput{}, errors.New("error de servicio")
+	}
+	return service.ProfileOutput{}, nil
+}
+
 func newUserProfileTestRouter(svc transport.UserProfileService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	h := transport.NewUserProfileHandler(svc)
