@@ -19,6 +19,13 @@ type fakeUserProfileService struct {
 	err bool
 }
 
+func (f *fakeUserProfileService) GetProfile(_ context.Context, _ int32) (service.ProfileOutput, error) {
+	if f.err {
+		return service.ProfileOutput{}, errors.New("error de servicio")
+	}
+	return service.ProfileOutput{}, nil
+}
+
 func (f *fakeUserProfileService) Create(_ context.Context, input service.CreateProfileInput) (service.ProfileOutput, error) {
 	if f.err {
 		return service.ProfileOutput{}, errors.New("error de servicio")
