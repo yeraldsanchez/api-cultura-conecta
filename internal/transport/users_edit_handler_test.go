@@ -22,6 +22,7 @@ type fakeEditService struct {
 	remInterestErr  bool
 	addFocusErr     bool
 	remFocusErr     bool
+	getProfileErr   bool
 	capturedUpdate  service.UpdateProfileInput
 	capturedUserID  int32
 	capturedItemID  int32
@@ -30,6 +31,14 @@ type fakeEditService struct {
 
 func (f *fakeEditService) Create(_ context.Context, _ service.CreateProfileInput) (service.ProfileOutput, error) {
 	return service.ProfileOutput{}, nil
+}
+
+func (f *fakeEditService) GetProfile(_ context.Context, userID int32) (service.ProfileOutput, error) {
+	f.capturedUserID = userID
+	if f.getProfileErr {
+		return service.ProfileOutput{}, errors.New("error de servicio")
+	}
+	return f.returnedProfile, nil
 }
 
 func (f *fakeEditService) UpdateProfile(_ context.Context, input service.UpdateProfileInput) (service.ProfileOutput, error) {
@@ -80,6 +89,7 @@ func newEditTestRouter(svc transport.UserProfileService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	h := transport.NewUserProfileHandler(svc)
 	r := gin.New()
+	r.GET("/api/v1/users/:user_id", h.GetProfile)
 	r.PATCH("/api/v1/users/:user_id", h.PatchProfile)
 	r.POST("/api/v1/users/:user_id/interests", h.AddInterest)
 	r.DELETE("/api/v1/users/:user_id/interests/:category_id", h.RemoveInterest)
@@ -420,6 +430,61 @@ func TestRemoveFocusType_FocusTypeIDInvalido(t *testing.T) {
 func TestRemoveFocusType_ErrorServicio(t *testing.T) {
 	r := newEditTestRouter(&fakeEditService{remFocusErr: true})
 	w := doRemoveFocusType(r, "1", "3")
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+// ─── GET /users/:user_id ──────────────────────────────────────────────────────
+
+func doGetProfile(r *gin.Engine, userID string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/"+userID, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestGetProfile_Success(t *testing.T) {
+	svc := &fakeEditService{returnedProfile: sampleProfileOutput}
+	r := newEditTestRouter(svc)
+	w := doGetProfile(r, "1")
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+	if svc.capturedUserID != 1 {
+		t.Fatalf("expected user_id 1, got %d", svc.capturedUserID)
+	}
+
+	var resp struct {
+		Data struct {
+			Profile service.ProfileOutput `json:"profile"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if resp.Data.Profile.UserID != sampleProfileOutput.UserID {
+		t.Fatalf("expected user_id %d, got %d", sampleProfileOutput.UserID, resp.Data.Profile.UserID)
+	}
+	if resp.Data.Profile.Name != sampleProfileOutput.Name {
+		t.Fatalf("expected name %q, got %q", sampleProfileOutput.Name, resp.Data.Profile.Name)
+	}
+}
+
+func TestGetProfile_UserIDInvalido(t *testing.T) {
+	r := newEditTestRouter(&fakeEditService{})
+	w := doGetProfile(r, "abc")
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetProfile_ErrorServicio(t *testing.T) {
+	r := newEditTestRouter(&fakeEditService{getProfileErr: true})
+	w := doGetProfile(r, "1")
 
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d — body: %s", w.Code, w.Body.String())
