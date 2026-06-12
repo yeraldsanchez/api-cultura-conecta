@@ -45,6 +45,10 @@ AND (
     )
 );
 
+-- name: AddGroupMember :exec
+INSERT INTO group_members (group_id, user_id, role)
+VALUES ($1, $2, $3);
+
 -- name: ListGroups :many
 SELECT g.id,
        g.work_id,
