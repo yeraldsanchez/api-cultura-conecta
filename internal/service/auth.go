@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -138,25 +139,22 @@ func (s *AuthService) ValidateAccessToken(tokenStr string) (int32, error) {
 	}
 
 	sub, err := claims.GetSubject()
+	if err != nil || sub == "" {
+		return 0, apperrors.ErrUnauthorized
+	}
+
+	userID, err := strconv.ParseInt(sub, 10, 32)
 	if err != nil {
 		return 0, apperrors.ErrUnauthorized
 	}
 
-	// jwt.MapClaims encodes numeric values as float64
-	subFloat, ok := claims["sub"].(float64)
-	if !ok {
-		// fallback: try parsing from string representation
-		_ = sub
-		return 0, apperrors.ErrUnauthorized
-	}
-
-	return int32(subFloat), nil
+	return int32(userID), nil
 }
 
 func (s *AuthService) generateToken(userID int32) (string, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{
-		"sub": userID,
+		"sub": strconv.Itoa(int(userID)),
 		"exp": now.Add(s.tokenTTL).Unix(),
 		"iat": now.Unix(),
 	}
