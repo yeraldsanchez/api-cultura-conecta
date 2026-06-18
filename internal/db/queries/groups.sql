@@ -93,3 +93,66 @@ SELECT EXISTS (
 INSERT INTO posts (group_id, user_id, content, has_spoiler, spoiler_progress)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
+
+-- name: ListSuggestedGroups :many
+SELECT g.id,
+       g.work_id,
+       g.created_by,
+       g.name,
+       g.description,
+       g.depth_level,
+       g.created_at,
+       cw.title     AS work_title,
+       up.name      AS created_by_name,
+       JSONB_AGG(
+           JSONB_BUILD_OBJECT('id', ft.id, 'name', ft.name)
+       ) FILTER (WHERE ft.id IS NOT NULL) AS focus_types
+FROM groups g
+         JOIN cultural_works cw ON g.work_id = cw.id
+         JOIN users u ON g.created_by = u.id
+         LEFT JOIN user_profiles up ON u.id = up.user_id
+         LEFT JOIN groups_focus_types gft ON gft.group_id = g.id
+         LEFT JOIN focus_types ft ON ft.id = gft.focus_type_id
+         JOIN user_profiles requester ON requester.user_id = sqlc.arg('user_id')
+WHERE g.depth_level = requester.depth_level
+  AND EXISTS (
+      SELECT 1 FROM user_interests ui
+      WHERE ui.profile_id = requester.id
+        AND ui.category_id = cw.category_id
+  )
+  AND EXISTS (
+      SELECT 1 FROM groups_focus_types gft2
+               JOIN users_focus_types uft ON uft.focus_type_id = gft2.focus_type_id
+      WHERE gft2.group_id = g.id
+        AND uft.profile_id = requester.id
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = g.id
+        AND gm.user_id = sqlc.arg('user_id')
+  )
+GROUP BY g.id, cw.title, up.name
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: CountSuggestedGroups :one
+SELECT COUNT(DISTINCT g.id)
+FROM groups g
+         JOIN cultural_works cw ON g.work_id = cw.id
+         JOIN user_profiles requester ON requester.user_id = sqlc.arg('user_id')
+WHERE g.depth_level = requester.depth_level
+  AND EXISTS (
+      SELECT 1 FROM user_interests ui
+      WHERE ui.profile_id = requester.id
+        AND ui.category_id = cw.category_id
+  )
+  AND EXISTS (
+      SELECT 1 FROM groups_focus_types gft
+               JOIN users_focus_types uft ON uft.focus_type_id = gft.focus_type_id
+      WHERE gft.group_id = g.id
+        AND uft.profile_id = requester.id
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = g.id
+        AND gm.user_id = sqlc.arg('user_id')
+  );

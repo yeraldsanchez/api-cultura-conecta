@@ -206,6 +206,49 @@ func (s *GroupService) CreatePost(ctx context.Context, input CreatePostInput) (P
 	return out, err
 }
 
+type SuggestGroupsInput struct {
+	UserID int32
+	Limit  int32
+	Offset int32
+}
+
+func (s *GroupService) GetSuggestedGroups(ctx context.Context, input SuggestGroupsInput) (ListGroupsOutput, error) {
+	total, err := s.q.CountSuggestedGroups(ctx, input.UserID)
+	if err != nil {
+		return ListGroupsOutput{}, err
+	}
+
+	rows, err := s.q.ListSuggestedGroups(ctx, db.ListSuggestedGroupsParams{
+		UserID: input.UserID,
+		Limit:  input.Limit,
+		Offset: input.Offset,
+	})
+	if err != nil {
+		return ListGroupsOutput{}, err
+	}
+
+	groups := make([]GroupOutput, 0, len(rows))
+	for _, row := range rows {
+		var interests []InterestOutput
+		if len(row.FocusTypes) > 0 {
+			if err := json.Unmarshal(row.FocusTypes, &interests); err != nil {
+				return ListGroupsOutput{}, err
+			}
+		}
+		groups = append(groups, GroupOutput{
+			ID:          row.ID,
+			Name:        row.Name,
+			WorkID:      row.WorkID,
+			WorkTitle:   row.WorkTitle,
+			CreatedBy:   row.CreatedBy,
+			Description: row.Description,
+			DepthLevel:  row.DepthLevel,
+			Interests:   interests,
+		})
+	}
+	return ListGroupsOutput{Groups: groups, Total: total}, nil
+}
+
 func (s *GroupService) GetGroup(ctx context.Context, groupID int32) (GroupOutput, error) {
 	group, err := s.q.GetGroupByID(ctx, groupID)
 	if err != nil {

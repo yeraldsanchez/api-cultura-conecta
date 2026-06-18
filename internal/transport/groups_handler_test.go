@@ -56,6 +56,13 @@ func (f *fakeGroupService) CreatePost(_ context.Context, _ service.CreatePostInp
 	return f.createPostResult, f.createPostErr
 }
 
+func (f *fakeGroupService) GetSuggestedGroups(_ context.Context, _ service.SuggestGroupsInput) (service.ListGroupsOutput, error) {
+	if f.listErr {
+		return service.ListGroupsOutput{}, errors.New("error de servicio")
+	}
+	return f.listResult, nil
+}
+
 func newGroupTestRouter(svc transport.GroupService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	h := transport.NewGroupHandler(svc)
@@ -406,6 +413,85 @@ func TestCreatePost_GroupNotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func newSuggestionsTestRouter(svc transport.GroupService, userID int32) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	h := transport.NewGroupHandler(svc)
+	r := gin.New()
+	r.GET("/api/v1/groups/suggestions", func(c *gin.Context) {
+		c.Set(transport.UserIDKey, userID)
+		c.Next()
+	}, h.GetSuggestedGroups)
+	return r
+}
+
+func doGetSuggestions(r *gin.Engine, query string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups/suggestions"+query, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestGetSuggestedGroups_Success(t *testing.T) {
+	svc := &fakeGroupService{
+		listResult: service.ListGroupsOutput{Groups: sampleGroups, Total: 2},
+	}
+	r := newSuggestionsTestRouter(svc, 7)
+	w := doGetSuggestions(r, "")
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			Items      []service.GroupOutput `json:"items"`
+			TotalCount int64                 `json:"total_count"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if len(resp.Data.Items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(resp.Data.Items))
+	}
+	if resp.Data.TotalCount != 2 {
+		t.Fatalf("expected total_count 2, got %d", resp.Data.TotalCount)
+	}
+}
+
+func TestGetSuggestedGroups_Empty(t *testing.T) {
+	svc := &fakeGroupService{
+		listResult: service.ListGroupsOutput{Groups: []service.GroupOutput{}, Total: 0},
+	}
+	r := newSuggestionsTestRouter(svc, 7)
+	w := doGetSuggestions(r, "")
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			Items      []service.GroupOutput `json:"items"`
+			TotalCount int64                 `json:"total_count"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if len(resp.Data.Items) != 0 {
+		t.Fatalf("expected 0 items, got %d", len(resp.Data.Items))
+	}
+}
+
+func TestGetSuggestedGroups_ServiceError(t *testing.T) {
+	svc := &fakeGroupService{listErr: true}
+	r := newSuggestionsTestRouter(svc, 7)
+	w := doGetSuggestions(r, "")
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d — body: %s", w.Code, w.Body.String())
 	}
 }
 

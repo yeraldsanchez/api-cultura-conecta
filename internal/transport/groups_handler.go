@@ -15,6 +15,7 @@ type GroupService interface {
 	ListGroups(ctx context.Context, input service.ListGroupsInput) (service.ListGroupsOutput, error)
 	JoinGroup(ctx context.Context, groupID int32, userID int32) error
 	CreatePost(ctx context.Context, input service.CreatePostInput) (service.PostOutput, error)
+	GetSuggestedGroups(ctx context.Context, input service.SuggestGroupsInput) (service.ListGroupsOutput, error)
 }
 
 type GroupHandler struct {
@@ -134,6 +135,36 @@ func (h *GroupHandler) CreatePost(c *gin.Context) {
 		return
 	}
 	OK(c, http.StatusCreated, gin.H{"post": post})
+}
+
+func (h *GroupHandler) GetSuggestedGroups(c *gin.Context) {
+	userID := c.MustGet(UserIDKey).(int32)
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	result, err := h.svc.GetSuggestedGroups(c.Request.Context(), service.SuggestGroupsInput{
+		UserID: userID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		RespondError(c, err, "Error al obtener sugerencias de grupos.")
+		return
+	}
+	OK(c, http.StatusOK, PaginatedOutput[service.GroupOutput]{
+		Items:      result.Groups,
+		TotalCount: result.Total,
+		Page:       int32(page),
+		Limit:      int32(limit),
+	})
 }
 
 func (h *GroupHandler) CreateGroup(c *gin.Context) {

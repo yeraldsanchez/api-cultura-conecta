@@ -14,6 +14,7 @@ type Querier interface {
 	AssignFocusTypeToUser(ctx context.Context, arg AssignFocusTypeToUserParams) error
 	AssignInterestToUser(ctx context.Context, arg AssignInterestToUserParams) error
 	CountGroups(ctx context.Context, arg CountGroupsParams) (int64, error)
+	CountSuggestedGroups(ctx context.Context, userID int32) (int64, error)
 	CreateCategory(ctx context.Context, name string) (Category, error)
 	CreateCulturalWork(ctx context.Context, arg CreateCulturalWorkParams) (CreateCulturalWorkRow, error)
 	CreateFocusType(ctx context.Context, name string) (FocusType, error)
@@ -34,6 +35,7 @@ type Querier interface {
 	GetUserProfileByUserId(ctx context.Context, id int32) (GetUserProfileByUserIdRow, error)
 	IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error)
 	ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListGroupsRow, error)
+	ListSuggestedGroups(ctx context.Context, arg ListSuggestedGroupsParams) ([]ListSuggestedGroupsRow, error)
 	RemoveFocusTypeFromUser(ctx context.Context, arg RemoveFocusTypeFromUserParams) error
 	RemoveInterestFromUser(ctx context.Context, arg RemoveInterestFromUserParams) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID int32) error
