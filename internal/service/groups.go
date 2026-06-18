@@ -5,6 +5,7 @@ import (
 	db "api-cultura-conecta/internal/db/generated"
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -146,6 +147,63 @@ func (s *GroupService) JoinGroup(ctx context.Context, groupID int32, userID int3
 		})
 		return apperrors.FromPgx(err, apperrors.GroupMembersConstraints)
 	})
+}
+
+type CreatePostInput struct {
+	GroupID         int32
+	UserID          int32
+	Content         string
+	HasSpoiler      bool
+	SpoilerProgress *string
+}
+
+type PostOutput struct {
+	ID              int32     `json:"id"`
+	GroupID         int32     `json:"group_id"`
+	UserID          int32     `json:"user_id"`
+	Content         string    `json:"content"`
+	HasSpoiler      bool      `json:"has_spoiler"`
+	SpoilerProgress *string   `json:"spoiler_progress"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+func (s *GroupService) CreatePost(ctx context.Context, input CreatePostInput) (PostOutput, error) {
+	var out PostOutput
+	err := withTx(ctx, s.pool, func(q db.Querier) error {
+		isMember, err := q.IsGroupMember(ctx, db.IsGroupMemberParams{
+			GroupID: input.GroupID,
+			UserID:  input.UserID,
+		})
+		if err != nil {
+			return err
+		}
+		if !isMember {
+			return apperrors.ErrNotGroupMember
+		}
+
+		post, err := q.CreatePost(ctx, db.CreatePostParams{
+			GroupID:         input.GroupID,
+			UserID:          input.UserID,
+			Content:         input.Content,
+			HasSpoiler:      input.HasSpoiler,
+			SpoilerProgress: input.SpoilerProgress,
+		})
+		if err != nil {
+			return apperrors.FromPgx(err, apperrors.PostsConstraints)
+		}
+
+		out = PostOutput{
+			ID:              post.ID,
+			GroupID:         post.GroupID,
+			UserID:          post.UserID,
+			Content:         post.Content,
+			HasSpoiler:      post.HasSpoiler,
+			SpoilerProgress: post.SpoilerProgress,
+			CreatedAt:       post.CreatedAt,
+		}
+		return nil
+	})
+	return out, err
 }
 
 func (s *GroupService) GetGroup(ctx context.Context, groupID int32) (GroupOutput, error) {

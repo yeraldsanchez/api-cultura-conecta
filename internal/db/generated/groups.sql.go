@@ -104,6 +104,41 @@ func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (int32
 	return id, err
 }
 
+const createPost = `-- name: CreatePost :one
+INSERT INTO posts (group_id, user_id, content, has_spoiler, spoiler_progress)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, group_id, user_id, content, has_spoiler, spoiler_progress, created_at
+`
+
+type CreatePostParams struct {
+	GroupID         int32   `json:"group_id"`
+	UserID          int32   `json:"user_id"`
+	Content         string  `json:"content"`
+	HasSpoiler      bool    `json:"has_spoiler"`
+	SpoilerProgress *string `json:"spoiler_progress"`
+}
+
+func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
+	row := q.db.QueryRow(ctx, createPost,
+		arg.GroupID,
+		arg.UserID,
+		arg.Content,
+		arg.HasSpoiler,
+		arg.SpoilerProgress,
+	)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.UserID,
+		&i.Content,
+		&i.HasSpoiler,
+		&i.SpoilerProgress,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getGroupByID = `-- name: GetGroupByID :one
 SELECT g.id,
        g.work_id,
@@ -175,6 +210,25 @@ func (q *Queries) GetGroupFocusTypes(ctx context.Context, groupID int32) ([]Focu
 		return nil, err
 	}
 	return items, nil
+}
+
+const isGroupMember = `-- name: IsGroupMember :one
+SELECT EXISTS (
+    SELECT 1 FROM group_members
+    WHERE group_id = $1 AND user_id = $2
+)
+`
+
+type IsGroupMemberParams struct {
+	GroupID int32 `json:"group_id"`
+	UserID  int32 `json:"user_id"`
+}
+
+func (q *Queries) IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isGroupMember, arg.GroupID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const listGroups = `-- name: ListGroups :many

@@ -18,11 +18,13 @@ import (
 
 // fakeGroupService implementa transport.GroupService en memoria.
 type fakeGroupService struct {
-	err           bool
-	listResult    service.ListGroupsOutput
-	listErr       bool
-	capturedInput service.ListGroupsInput
-	joinErr       error
+	err              bool
+	listResult       service.ListGroupsOutput
+	listErr          bool
+	capturedInput    service.ListGroupsInput
+	joinErr          error
+	createPostErr    error
+	createPostResult service.PostOutput
 }
 
 func (f *fakeGroupService) CreateGroup(_ context.Context, input service.CreateGroupInput) (service.GroupOutput, error) {
@@ -48,6 +50,10 @@ func (f *fakeGroupService) ListGroups(_ context.Context, input service.ListGroup
 
 func (f *fakeGroupService) JoinGroup(_ context.Context, _ int32, _ int32) error {
 	return f.joinErr
+}
+
+func (f *fakeGroupService) CreatePost(_ context.Context, _ service.CreatePostInput) (service.PostOutput, error) {
+	return f.createPostResult, f.createPostErr
 }
 
 func newGroupTestRouter(svc transport.GroupService) *gin.Engine {
@@ -321,6 +327,85 @@ func TestJoinGroup_GroupIDInvalido(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func newPostTestRouter(svc transport.GroupService, userID int32) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	h := transport.NewGroupHandler(svc)
+	r := gin.New()
+	r.POST("/api/v1/groups/:group_id/posts", func(c *gin.Context) {
+		c.Set(transport.UserIDKey, userID)
+		c.Next()
+	}, h.CreatePost)
+	return r
+}
+
+func doCreatePost(r *gin.Engine, groupID string, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/groups/"+groupID+"/posts", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestCreatePost_Success(t *testing.T) {
+	sp := "Capítulo 5"
+	svc := &fakeGroupService{
+		createPostResult: service.PostOutput{
+			ID:              1,
+			GroupID:         3,
+			UserID:          7,
+			Content:         "Mi opinión",
+			HasSpoiler:      true,
+			SpoilerProgress: &sp,
+		},
+	}
+	r := newPostTestRouter(svc, 7)
+	w := doCreatePost(r, "3", `{"content":"Mi opinión","has_spoiler":true,"spoiler_progress":"Capítulo 5"}`)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d — body: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			Post service.PostOutput `json:"post"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if resp.Data.Post.ID != 1 {
+		t.Fatalf("expected post id 1, got %d", resp.Data.Post.ID)
+	}
+}
+
+func TestCreatePost_NotMember(t *testing.T) {
+	svc := &fakeGroupService{createPostErr: apperrors.ErrNotGroupMember}
+	r := newPostTestRouter(svc, 99)
+	w := doCreatePost(r, "3", `{"content":"Hola"}`)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCreatePost_InvalidBody(t *testing.T) {
+	r := newPostTestRouter(&fakeGroupService{}, 7)
+	w := doCreatePost(r, "3", `{}`)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCreatePost_GroupNotFound(t *testing.T) {
+	svc := &fakeGroupService{createPostErr: apperrors.ErrGroupNotFound}
+	r := newPostTestRouter(svc, 7)
+	w := doCreatePost(r, "9999", `{"content":"Hola"}`)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d — body: %s", w.Code, w.Body.String())
 	}
 }
 

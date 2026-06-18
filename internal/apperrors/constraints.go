@@ -53,3 +53,8 @@ var GroupMembersConstraints = map[string]error{
 	"group_members_group_id_fkey": ErrGroupNotFound,
 	"group_members_user_id_fkey":  ErrUserNotFound,
 }
+
+var PostsConstraints = map[string]error{
+	"posts_group_id_fkey": ErrGroupNotFound,
+	"posts_user_id_fkey":  ErrUserNotFound,
+}

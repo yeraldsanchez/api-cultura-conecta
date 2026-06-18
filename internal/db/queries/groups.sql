@@ -82,3 +82,14 @@ AND (
 )
 GROUP BY g.id, cw.title, up.name
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
+
+-- name: IsGroupMember :one
+SELECT EXISTS (
+    SELECT 1 FROM group_members
+    WHERE group_id = $1 AND user_id = $2
+);
+
+-- name: CreatePost :one
+INSERT INTO posts (group_id, user_id, content, has_spoiler, spoiler_progress)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;

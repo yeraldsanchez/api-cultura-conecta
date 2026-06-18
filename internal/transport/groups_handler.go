@@ -14,6 +14,7 @@ type GroupService interface {
 	CreateGroup(ctx context.Context, input service.CreateGroupInput) (service.GroupOutput, error)
 	ListGroups(ctx context.Context, input service.ListGroupsInput) (service.ListGroupsOutput, error)
 	JoinGroup(ctx context.Context, groupID int32, userID int32) error
+	CreatePost(ctx context.Context, input service.CreatePostInput) (service.PostOutput, error)
 }
 
 type GroupHandler struct {
@@ -100,6 +101,39 @@ func (h *GroupHandler) JoinGroup(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+type CreatePostRequest struct {
+	Content         string  `json:"content" binding:"required"`
+	HasSpoiler      bool    `json:"has_spoiler"`
+	SpoilerProgress *string `json:"spoiler_progress"`
+}
+
+func (h *GroupHandler) CreatePost(c *gin.Context) {
+	groupID, err := parsePathInt32(c, "group_id")
+	if err != nil {
+		return
+	}
+	userID := c.MustGet(UserIDKey).(int32)
+
+	var req CreatePostRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		Fail(c, http.StatusBadRequest, "Bad Request", "El cuerpo de la solicitud es inválido.")
+		return
+	}
+
+	post, err := h.svc.CreatePost(c.Request.Context(), service.CreatePostInput{
+		GroupID:         groupID,
+		UserID:          userID,
+		Content:         req.Content,
+		HasSpoiler:      req.HasSpoiler,
+		SpoilerProgress: req.SpoilerProgress,
+	})
+	if err != nil {
+		RespondError(c, err, "Error al publicar el mensaje.")
+		return
+	}
+	OK(c, http.StatusCreated, gin.H{"post": post})
 }
 
 func (h *GroupHandler) CreateGroup(c *gin.Context) {

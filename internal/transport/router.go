@@ -59,6 +59,7 @@ func RegisterRoutes(
 
 		protectedGroupG := protected.Group("/groups")
 		protectedGroupG.POST("/:group_id/members", group.JoinGroup)
+		protectedGroupG.POST("/:group_id/posts", group.CreatePost)
 	}
 
 	interestG := v1.Group("/interests")
