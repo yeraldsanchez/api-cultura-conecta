@@ -14,6 +14,8 @@ type GroupService interface {
 	CreateGroup(ctx context.Context, input service.CreateGroupInput) (service.GroupOutput, error)
 	ListGroups(ctx context.Context, input service.ListGroupsInput) (service.ListGroupsOutput, error)
 	JoinGroup(ctx context.Context, groupID int32, userID int32) error
+	CreatePost(ctx context.Context, input service.CreatePostInput) (service.PostOutput, error)
+	GetSuggestedGroups(ctx context.Context, input service.SuggestGroupsInput) (service.ListGroupsOutput, error)
 }
 
 type GroupHandler struct {
@@ -100,6 +102,69 @@ func (h *GroupHandler) JoinGroup(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+type CreatePostRequest struct {
+	Content         string  `json:"content" binding:"required"`
+	HasSpoiler      bool    `json:"has_spoiler"`
+	SpoilerProgress *string `json:"spoiler_progress"`
+}
+
+func (h *GroupHandler) CreatePost(c *gin.Context) {
+	groupID, err := parsePathInt32(c, "group_id")
+	if err != nil {
+		return
+	}
+	userID := c.MustGet(UserIDKey).(int32)
+
+	var req CreatePostRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		Fail(c, http.StatusBadRequest, "Bad Request", "El cuerpo de la solicitud es inválido.")
+		return
+	}
+
+	post, err := h.svc.CreatePost(c.Request.Context(), service.CreatePostInput{
+		GroupID:         groupID,
+		UserID:          userID,
+		Content:         req.Content,
+		HasSpoiler:      req.HasSpoiler,
+		SpoilerProgress: req.SpoilerProgress,
+	})
+	if err != nil {
+		RespondError(c, err, "Error al publicar el mensaje.")
+		return
+	}
+	OK(c, http.StatusCreated, gin.H{"post": post})
+}
+
+func (h *GroupHandler) GetSuggestedGroups(c *gin.Context) {
+	userID := c.MustGet(UserIDKey).(int32)
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	result, err := h.svc.GetSuggestedGroups(c.Request.Context(), service.SuggestGroupsInput{
+		UserID: userID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		RespondError(c, err, "Error al obtener sugerencias de grupos.")
+		return
+	}
+	OK(c, http.StatusOK, PaginatedOutput[service.GroupOutput]{
+		Items:      result.Groups,
+		TotalCount: result.Total,
+		Page:       int32(page),
+		Limit:      int32(limit),
+	})
 }
 
 func (h *GroupHandler) CreateGroup(c *gin.Context) {

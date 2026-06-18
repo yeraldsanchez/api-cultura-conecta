@@ -27,7 +27,8 @@ var (
 	ErrFocusTypeNotFound    = newNotFound("focus type does not exist")
 	ErrGroupNotFound        = newNotFound("group not found")
 
-	ErrAlreadyMember = newConflict("user is already a member of this group")
+	ErrAlreadyMember  = newConflict("user is already a member of this group")
+	ErrNotGroupMember = newUnauthorized("user is not a member of this group")
 
 	ErrInvalidCredentials = newUnauthorized("invalid email or password")
 )

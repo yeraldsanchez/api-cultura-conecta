@@ -58,7 +58,9 @@ func RegisterRoutes(
 		userG.DELETE("/:user_id/focus-types/:focus_type_id", user.RemoveFocusType)
 
 		protectedGroupG := protected.Group("/groups")
+		protectedGroupG.GET("/suggestions", group.GetSuggestedGroups)
 		protectedGroupG.POST("/:group_id/members", group.JoinGroup)
+		protectedGroupG.POST("/:group_id/posts", group.CreatePost)
 	}
 
 	interestG := v1.Group("/interests")

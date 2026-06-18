@@ -14,10 +14,12 @@ type Querier interface {
 	AssignFocusTypeToUser(ctx context.Context, arg AssignFocusTypeToUserParams) error
 	AssignInterestToUser(ctx context.Context, arg AssignInterestToUserParams) error
 	CountGroups(ctx context.Context, arg CountGroupsParams) (int64, error)
+	CountSuggestedGroups(ctx context.Context, userID int32) (int64, error)
 	CreateCategory(ctx context.Context, name string) (Category, error)
 	CreateCulturalWork(ctx context.Context, arg CreateCulturalWorkParams) (CreateCulturalWorkRow, error)
 	CreateFocusType(ctx context.Context, name string) (FocusType, error)
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (int32, error)
+	CreatePost(ctx context.Context, arg CreatePostParams) (Post, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (int32, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (int32, error)
 	CreateUserProfile(ctx context.Context, arg CreateUserProfileParams) (int32, error)
@@ -31,7 +33,9 @@ type Querier interface {
 	GetUserFocusTypes(ctx context.Context, profileID int32) ([]FocusType, error)
 	GetUserInterests(ctx context.Context, profileID int32) ([]Category, error)
 	GetUserProfileByUserId(ctx context.Context, id int32) (GetUserProfileByUserIdRow, error)
+	IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error)
 	ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListGroupsRow, error)
+	ListSuggestedGroups(ctx context.Context, arg ListSuggestedGroupsParams) ([]ListSuggestedGroupsRow, error)
 	RemoveFocusTypeFromUser(ctx context.Context, arg RemoveFocusTypeFromUserParams) error
 	RemoveInterestFromUser(ctx context.Context, arg RemoveInterestFromUserParams) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID int32) error

@@ -77,6 +77,37 @@ func (q *Queries) CountGroups(ctx context.Context, arg CountGroupsParams) (int64
 	return count, err
 }
 
+const countSuggestedGroups = `-- name: CountSuggestedGroups :one
+SELECT COUNT(DISTINCT g.id)
+FROM groups g
+         JOIN cultural_works cw ON g.work_id = cw.id
+         JOIN user_profiles requester ON requester.user_id = $1
+WHERE g.depth_level = requester.depth_level
+  AND EXISTS (
+      SELECT 1 FROM user_interests ui
+      WHERE ui.profile_id = requester.id
+        AND ui.category_id = cw.category_id
+  )
+  AND EXISTS (
+      SELECT 1 FROM groups_focus_types gft
+               JOIN users_focus_types uft ON uft.focus_type_id = gft.focus_type_id
+      WHERE gft.group_id = g.id
+        AND uft.profile_id = requester.id
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = g.id
+        AND gm.user_id = $1
+  )
+`
+
+func (q *Queries) CountSuggestedGroups(ctx context.Context, userID int32) (int64, error) {
+	row := q.db.QueryRow(ctx, countSuggestedGroups, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createGroup = `-- name: CreateGroup :one
 INSERT INTO groups (work_id, created_by, name, description, depth_level)
 VALUES ($1, $2, $3, $4, $5)
@@ -102,6 +133,41 @@ func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (int32
 	var id int32
 	err := row.Scan(&id)
 	return id, err
+}
+
+const createPost = `-- name: CreatePost :one
+INSERT INTO posts (group_id, user_id, content, has_spoiler, spoiler_progress)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, group_id, user_id, content, has_spoiler, spoiler_progress, created_at
+`
+
+type CreatePostParams struct {
+	GroupID         int32   `json:"group_id"`
+	UserID          int32   `json:"user_id"`
+	Content         string  `json:"content"`
+	HasSpoiler      bool    `json:"has_spoiler"`
+	SpoilerProgress *string `json:"spoiler_progress"`
+}
+
+func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
+	row := q.db.QueryRow(ctx, createPost,
+		arg.GroupID,
+		arg.UserID,
+		arg.Content,
+		arg.HasSpoiler,
+		arg.SpoilerProgress,
+	)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.UserID,
+		&i.Content,
+		&i.HasSpoiler,
+		&i.SpoilerProgress,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getGroupByID = `-- name: GetGroupByID :one
@@ -177,6 +243,25 @@ func (q *Queries) GetGroupFocusTypes(ctx context.Context, groupID int32) ([]Focu
 	return items, nil
 }
 
+const isGroupMember = `-- name: IsGroupMember :one
+SELECT EXISTS (
+    SELECT 1 FROM group_members
+    WHERE group_id = $1 AND user_id = $2
+)
+`
+
+type IsGroupMemberParams struct {
+	GroupID int32 `json:"group_id"`
+	UserID  int32 `json:"user_id"`
+}
+
+func (q *Queries) IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isGroupMember, arg.GroupID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const listGroups = `-- name: ListGroups :many
 SELECT g.id,
        g.work_id,
@@ -250,6 +335,97 @@ func (q *Queries) ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListG
 	items := []ListGroupsRow{}
 	for rows.Next() {
 		var i ListGroupsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkID,
+			&i.CreatedBy,
+			&i.Name,
+			&i.Description,
+			&i.DepthLevel,
+			&i.CreatedAt,
+			&i.WorkTitle,
+			&i.CreatedByName,
+			&i.FocusTypes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSuggestedGroups = `-- name: ListSuggestedGroups :many
+SELECT g.id,
+       g.work_id,
+       g.created_by,
+       g.name,
+       g.description,
+       g.depth_level,
+       g.created_at,
+       cw.title     AS work_title,
+       up.name      AS created_by_name,
+       JSONB_AGG(
+           JSONB_BUILD_OBJECT('id', ft.id, 'name', ft.name)
+       ) FILTER (WHERE ft.id IS NOT NULL) AS focus_types
+FROM groups g
+         JOIN cultural_works cw ON g.work_id = cw.id
+         JOIN users u ON g.created_by = u.id
+         LEFT JOIN user_profiles up ON u.id = up.user_id
+         LEFT JOIN groups_focus_types gft ON gft.group_id = g.id
+         LEFT JOIN focus_types ft ON ft.id = gft.focus_type_id
+         JOIN user_profiles requester ON requester.user_id = $1
+WHERE g.depth_level = requester.depth_level
+  AND EXISTS (
+      SELECT 1 FROM user_interests ui
+      WHERE ui.profile_id = requester.id
+        AND ui.category_id = cw.category_id
+  )
+  AND EXISTS (
+      SELECT 1 FROM groups_focus_types gft2
+               JOIN users_focus_types uft ON uft.focus_type_id = gft2.focus_type_id
+      WHERE gft2.group_id = g.id
+        AND uft.profile_id = requester.id
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM group_members gm
+      WHERE gm.group_id = g.id
+        AND gm.user_id = $1
+  )
+GROUP BY g.id, cw.title, up.name
+LIMIT $3 OFFSET $2
+`
+
+type ListSuggestedGroupsParams struct {
+	UserID int32 `json:"user_id"`
+	Offset int32 `json:"offset"`
+	Limit  int32 `json:"limit"`
+}
+
+type ListSuggestedGroupsRow struct {
+	ID            int32     `json:"id"`
+	WorkID        int32     `json:"work_id"`
+	CreatedBy     int32     `json:"created_by"`
+	Name          string    `json:"name"`
+	Description   *string   `json:"description"`
+	DepthLevel    string    `json:"depth_level"`
+	CreatedAt     time.Time `json:"created_at"`
+	WorkTitle     string    `json:"work_title"`
+	CreatedByName *string   `json:"created_by_name"`
+	FocusTypes    []byte    `json:"focus_types"`
+}
+
+func (q *Queries) ListSuggestedGroups(ctx context.Context, arg ListSuggestedGroupsParams) ([]ListSuggestedGroupsRow, error) {
+	rows, err := q.db.Query(ctx, listSuggestedGroups, arg.UserID, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSuggestedGroupsRow{}
+	for rows.Next() {
+		var i ListSuggestedGroupsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.WorkID,
