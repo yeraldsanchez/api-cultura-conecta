@@ -18,13 +18,17 @@ import (
 
 // fakeGroupService implementa transport.GroupService en memoria.
 type fakeGroupService struct {
-	err              bool
-	listResult       service.ListGroupsOutput
-	listErr          bool
-	capturedInput    service.ListGroupsInput
-	joinErr          error
-	createPostErr    error
-	createPostResult service.PostOutput
+	err                bool
+	listResult         service.ListGroupsOutput
+	listErr            bool
+	capturedInput      service.ListGroupsInput
+	joinErr            error
+	createPostErr      error
+	createPostResult   service.PostOutput
+	userGroupsResult   []service.UserGroupOutput
+	userGroupsErr      error
+	groupMembersResult []service.GroupMemberOutput
+	groupMembersErr    error
 }
 
 func (f *fakeGroupService) CreateGroup(_ context.Context, input service.CreateGroupInput) (service.GroupOutput, error) {
@@ -61,6 +65,14 @@ func (f *fakeGroupService) GetSuggestedGroups(_ context.Context, _ service.Sugge
 		return service.ListGroupsOutput{}, errors.New("error de servicio")
 	}
 	return f.listResult, nil
+}
+
+func (f *fakeGroupService) GetGroupsByMember(_ context.Context, _ int32) ([]service.UserGroupOutput, error) {
+	return f.userGroupsResult, f.userGroupsErr
+}
+
+func (f *fakeGroupService) GetGroupMembers(_ context.Context, _ int32) ([]service.GroupMemberOutput, error) {
+	return f.groupMembersResult, f.groupMembersErr
 }
 
 func newGroupTestRouter(svc transport.GroupService) *gin.Engine {
@@ -492,6 +504,158 @@ func TestGetSuggestedGroups_ServiceError(t *testing.T) {
 
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func newUserGroupsTestRouter(svc transport.GroupService, userID int32) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	h := transport.NewGroupHandler(svc)
+	r := gin.New()
+	r.GET("/api/v1/users/:user_id/groups", func(c *gin.Context) {
+		c.Set(transport.UserIDKey, userID)
+		c.Next()
+	}, h.GetGroupsByMember)
+	return r
+}
+
+func newGroupMembersTestRouter(svc transport.GroupService) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	h := transport.NewGroupHandler(svc)
+	r := gin.New()
+	r.GET("/api/v1/groups/:group_id/members", h.GetGroupMembers)
+	return r
+}
+
+func TestGetGroupsByMember_Success(t *testing.T) {
+	svc := &fakeGroupService{
+		userGroupsResult: []service.UserGroupOutput{
+			{ID: 1, Name: "Grupo de Jazz", Role: "member"},
+			{ID: 2, Name: "Club de Lectura", Role: "admin"},
+		},
+	}
+	r := newUserGroupsTestRouter(svc, 5)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/5/groups", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			Groups []service.UserGroupOutput `json:"groups"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if len(resp.Data.Groups) != 2 {
+		t.Fatalf("expected 2 groups, got %d", len(resp.Data.Groups))
+	}
+	if resp.Data.Groups[0].Role != "member" {
+		t.Fatalf("expected role 'member', got %q", resp.Data.Groups[0].Role)
+	}
+}
+
+func TestGetGroupsByMember_Empty(t *testing.T) {
+	svc := &fakeGroupService{userGroupsResult: []service.UserGroupOutput{}}
+	r := newUserGroupsTestRouter(svc, 5)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/5/groups", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetGroupsByMember_ServiceError(t *testing.T) {
+	svc := &fakeGroupService{userGroupsErr: errors.New("db error")}
+	r := newUserGroupsTestRouter(svc, 5)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/5/groups", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetGroupsByMember_InvalidUserID(t *testing.T) {
+	r := newUserGroupsTestRouter(&fakeGroupService{}, 5)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/abc/groups", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetGroupMembers_Success(t *testing.T) {
+	name1, name2 := "Ana García", "Luis Pérez"
+	svc := &fakeGroupService{
+		groupMembersResult: []service.GroupMemberOutput{
+			{UserID: 1, Name: &name1, Role: "admin"},
+			{UserID: 2, Name: &name2, Role: "member"},
+		},
+	}
+	r := newGroupMembersTestRouter(svc)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups/1/members", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		Data struct {
+			Members []service.GroupMemberOutput `json:"members"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	if len(resp.Data.Members) != 2 {
+		t.Fatalf("expected 2 members, got %d", len(resp.Data.Members))
+	}
+	if resp.Data.Members[0].Role != "admin" {
+		t.Fatalf("expected first member role 'admin', got %q", resp.Data.Members[0].Role)
+	}
+}
+
+func TestGetGroupMembers_Empty(t *testing.T) {
+	svc := &fakeGroupService{groupMembersResult: []service.GroupMemberOutput{}}
+	r := newGroupMembersTestRouter(svc)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups/1/members", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetGroupMembers_ServiceError(t *testing.T) {
+	svc := &fakeGroupService{groupMembersErr: errors.New("db error")}
+	r := newGroupMembersTestRouter(svc)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups/1/members", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d — body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetGroupMembers_InvalidGroupID(t *testing.T) {
+	r := newGroupMembersTestRouter(&fakeGroupService{})
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/groups/abc/members", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d — body: %s", w.Code, w.Body.String())
 	}
 }
 
