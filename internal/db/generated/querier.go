@@ -34,7 +34,9 @@ type Querier interface {
 	GetUserInterests(ctx context.Context, profileID int32) ([]Category, error)
 	GetUserProfileByUserId(ctx context.Context, id int32) (GetUserProfileByUserIdRow, error)
 	IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error)
+	ListGroupMembers(ctx context.Context, groupID int32) ([]ListGroupMembersRow, error)
 	ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListGroupsRow, error)
+	ListGroupsByMember(ctx context.Context, userID int32) ([]ListGroupsByMemberRow, error)
 	ListSuggestedGroups(ctx context.Context, arg ListSuggestedGroupsParams) ([]ListSuggestedGroupsRow, error)
 	RemoveFocusTypeFromUser(ctx context.Context, arg RemoveFocusTypeFromUserParams) error
 	RemoveInterestFromUser(ctx context.Context, arg RemoveInterestFromUserParams) error

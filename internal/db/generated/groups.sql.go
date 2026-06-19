@@ -262,6 +262,50 @@ func (q *Queries) IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (b
 	return exists, err
 }
 
+const listGroupMembers = `-- name: ListGroupMembers :many
+SELECT u.id    AS user_id,
+       up.name AS name,
+       gm.role,
+       gm.joined_at
+FROM group_members gm
+         JOIN users u ON u.id = gm.user_id
+         LEFT JOIN user_profiles up ON up.user_id = u.id
+WHERE gm.group_id = $1
+ORDER BY gm.joined_at
+`
+
+type ListGroupMembersRow struct {
+	UserID   int32     `json:"user_id"`
+	Name     *string   `json:"name"`
+	Role     string    `json:"role"`
+	JoinedAt time.Time `json:"joined_at"`
+}
+
+func (q *Queries) ListGroupMembers(ctx context.Context, groupID int32) ([]ListGroupMembersRow, error) {
+	rows, err := q.db.Query(ctx, listGroupMembers, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGroupMembersRow{}
+	for rows.Next() {
+		var i ListGroupMembersRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Name,
+			&i.Role,
+			&i.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGroups = `-- name: ListGroups :many
 SELECT g.id,
        g.work_id,
@@ -345,6 +389,80 @@ func (q *Queries) ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListG
 			&i.CreatedAt,
 			&i.WorkTitle,
 			&i.CreatedByName,
+			&i.FocusTypes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGroupsByMember = `-- name: ListGroupsByMember :many
+SELECT g.id,
+       g.work_id,
+       g.created_by,
+       g.name,
+       g.description,
+       g.depth_level,
+       g.created_at,
+       cw.title AS work_title,
+       up.name  AS created_by_name,
+       gm.role,
+       gm.joined_at,
+       JSONB_AGG(
+           JSONB_BUILD_OBJECT('id', ft.id, 'name', ft.name)
+       ) FILTER (WHERE ft.id IS NOT NULL) AS focus_types
+FROM groups g
+         JOIN cultural_works cw ON g.work_id = cw.id
+         JOIN users u ON g.created_by = u.id
+         LEFT JOIN user_profiles up ON u.id = up.user_id
+         JOIN group_members gm ON gm.group_id = g.id AND gm.user_id = $1
+         LEFT JOIN groups_focus_types gft ON gft.group_id = g.id
+         LEFT JOIN focus_types ft ON ft.id = gft.focus_type_id
+GROUP BY g.id, cw.title, up.name, gm.role, gm.joined_at
+ORDER BY gm.joined_at
+`
+
+type ListGroupsByMemberRow struct {
+	ID            int32     `json:"id"`
+	WorkID        int32     `json:"work_id"`
+	CreatedBy     int32     `json:"created_by"`
+	Name          string    `json:"name"`
+	Description   *string   `json:"description"`
+	DepthLevel    string    `json:"depth_level"`
+	CreatedAt     time.Time `json:"created_at"`
+	WorkTitle     string    `json:"work_title"`
+	CreatedByName *string   `json:"created_by_name"`
+	Role          string    `json:"role"`
+	JoinedAt      time.Time `json:"joined_at"`
+	FocusTypes    []byte    `json:"focus_types"`
+}
+
+func (q *Queries) ListGroupsByMember(ctx context.Context, userID int32) ([]ListGroupsByMemberRow, error) {
+	rows, err := q.db.Query(ctx, listGroupsByMember, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGroupsByMemberRow{}
+	for rows.Next() {
+		var i ListGroupsByMemberRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkID,
+			&i.CreatedBy,
+			&i.Name,
+			&i.Description,
+			&i.DepthLevel,
+			&i.CreatedAt,
+			&i.WorkTitle,
+			&i.CreatedByName,
+			&i.Role,
+			&i.JoinedAt,
 			&i.FocusTypes,
 		); err != nil {
 			return nil, err

@@ -134,6 +134,42 @@ WHERE g.depth_level = requester.depth_level
 GROUP BY g.id, cw.title, up.name
 LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
+-- name: ListGroupsByMember :many
+SELECT g.id,
+       g.work_id,
+       g.created_by,
+       g.name,
+       g.description,
+       g.depth_level,
+       g.created_at,
+       cw.title AS work_title,
+       up.name  AS created_by_name,
+       gm.role,
+       gm.joined_at,
+       JSONB_AGG(
+           JSONB_BUILD_OBJECT('id', ft.id, 'name', ft.name)
+       ) FILTER (WHERE ft.id IS NOT NULL) AS focus_types
+FROM groups g
+         JOIN cultural_works cw ON g.work_id = cw.id
+         JOIN users u ON g.created_by = u.id
+         LEFT JOIN user_profiles up ON u.id = up.user_id
+         JOIN group_members gm ON gm.group_id = g.id AND gm.user_id = $1
+         LEFT JOIN groups_focus_types gft ON gft.group_id = g.id
+         LEFT JOIN focus_types ft ON ft.id = gft.focus_type_id
+GROUP BY g.id, cw.title, up.name, gm.role, gm.joined_at
+ORDER BY gm.joined_at;
+
+-- name: ListGroupMembers :many
+SELECT u.id    AS user_id,
+       up.name AS name,
+       gm.role,
+       gm.joined_at
+FROM group_members gm
+         JOIN users u ON u.id = gm.user_id
+         LEFT JOIN user_profiles up ON up.user_id = u.id
+WHERE gm.group_id = $1
+ORDER BY gm.joined_at;
+
 -- name: CountSuggestedGroups :one
 SELECT COUNT(DISTINCT g.id)
 FROM groups g

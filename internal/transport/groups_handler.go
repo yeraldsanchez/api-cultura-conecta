@@ -16,6 +16,8 @@ type GroupService interface {
 	JoinGroup(ctx context.Context, groupID int32, userID int32) error
 	CreatePost(ctx context.Context, input service.CreatePostInput) (service.PostOutput, error)
 	GetSuggestedGroups(ctx context.Context, input service.SuggestGroupsInput) (service.ListGroupsOutput, error)
+	GetGroupsByMember(ctx context.Context, userID int32) ([]service.UserGroupOutput, error)
+	GetGroupMembers(ctx context.Context, groupID int32) ([]service.GroupMemberOutput, error)
 }
 
 type GroupHandler struct {
@@ -165,6 +167,34 @@ func (h *GroupHandler) GetSuggestedGroups(c *gin.Context) {
 		Page:       int32(page),
 		Limit:      int32(limit),
 	})
+}
+
+func (h *GroupHandler) GetGroupsByMember(c *gin.Context) {
+	userID, err := parsePathInt32(c, "user_id")
+	if err != nil {
+		return
+	}
+
+	groups, err := h.svc.GetGroupsByMember(c.Request.Context(), userID)
+	if err != nil {
+		RespondError(c, err, "Error al obtener los grupos del usuario.")
+		return
+	}
+	OK(c, http.StatusOK, gin.H{"groups": groups})
+}
+
+func (h *GroupHandler) GetGroupMembers(c *gin.Context) {
+	groupID, err := parsePathInt32(c, "group_id")
+	if err != nil {
+		return
+	}
+
+	members, err := h.svc.GetGroupMembers(c.Request.Context(), groupID)
+	if err != nil {
+		RespondError(c, err, "Error al obtener los miembros del grupo.")
+		return
+	}
+	OK(c, http.StatusOK, gin.H{"members": members})
 }
 
 func (h *GroupHandler) CreateGroup(c *gin.Context) {

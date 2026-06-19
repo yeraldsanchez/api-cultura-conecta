@@ -249,6 +249,74 @@ func (s *GroupService) GetSuggestedGroups(ctx context.Context, input SuggestGrou
 	return ListGroupsOutput{Groups: groups, Total: total}, nil
 }
 
+type UserGroupOutput struct {
+	ID          int32            `json:"id"`
+	Name        string           `json:"name"`
+	WorkID      int32            `json:"work_id"`
+	WorkTitle   string           `json:"work_title"`
+	CreatedBy   int32            `json:"created_by"`
+	Description *string          `json:"description"`
+	DepthLevel  string           `json:"depth_level"`
+	Role        string           `json:"role"`
+	JoinedAt    time.Time        `json:"joined_at"`
+	Interests   []InterestOutput `json:"interests"`
+}
+
+func (s *GroupService) GetGroupsByMember(ctx context.Context, userID int32) ([]UserGroupOutput, error) {
+	rows, err := s.q.ListGroupsByMember(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	groups := make([]UserGroupOutput, 0, len(rows))
+	for _, row := range rows {
+		var interests []InterestOutput
+		if len(row.FocusTypes) > 0 {
+			if err := json.Unmarshal(row.FocusTypes, &interests); err != nil {
+				return nil, err
+			}
+		}
+		groups = append(groups, UserGroupOutput{
+			ID:          row.ID,
+			Name:        row.Name,
+			WorkID:      row.WorkID,
+			WorkTitle:   row.WorkTitle,
+			CreatedBy:   row.CreatedBy,
+			Description: row.Description,
+			DepthLevel:  row.DepthLevel,
+			Role:        row.Role,
+			JoinedAt:    row.JoinedAt,
+			Interests:   interests,
+		})
+	}
+	return groups, nil
+}
+
+type GroupMemberOutput struct {
+	UserID   int32     `json:"user_id"`
+	Name     *string   `json:"name"`
+	Role     string    `json:"role"`
+	JoinedAt time.Time `json:"joined_at"`
+}
+
+func (s *GroupService) GetGroupMembers(ctx context.Context, groupID int32) ([]GroupMemberOutput, error) {
+	rows, err := s.q.ListGroupMembers(ctx, groupID)
+	if err != nil {
+		return nil, apperrors.FromPgx(err, nil)
+	}
+
+	members := make([]GroupMemberOutput, 0, len(rows))
+	for _, row := range rows {
+		members = append(members, GroupMemberOutput{
+			UserID:   row.UserID,
+			Name:     row.Name,
+			Role:     row.Role,
+			JoinedAt: row.JoinedAt,
+		})
+	}
+	return members, nil
+}
+
 func (s *GroupService) GetGroup(ctx context.Context, groupID int32) (GroupOutput, error) {
 	group, err := s.q.GetGroupByID(ctx, groupID)
 	if err != nil {
