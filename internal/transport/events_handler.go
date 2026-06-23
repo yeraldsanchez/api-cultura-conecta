@@ -12,6 +12,7 @@ import (
 
 type EventService interface {
 	CreateEvent(ctx context.Context, input service.CreateEventInput) (service.EventOutput, error)
+	GetEventsByGroup(ctx context.Context, groupID int32) ([]service.EventOutput, error)
 }
 
 type EventHandler struct {
@@ -57,4 +58,18 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		return
 	}
 	OK(c, http.StatusCreated, gin.H{"event": event})
+}
+
+func (h *EventHandler) GetEvents(c *gin.Context) {
+	groupID, err := parsePathInt32(c, "group_id")
+	if err != nil {
+		return
+	}
+
+	events, err := h.svc.GetEventsByGroup(c.Request.Context(), groupID)
+	if err != nil {
+		RespondError(c, err, "Error al obtener los eventos.")
+		return
+	}
+	OK(c, http.StatusOK, gin.H{"events": events})
 }
