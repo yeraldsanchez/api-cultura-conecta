@@ -30,7 +30,8 @@ var (
 	ErrAlreadyMember  = newConflict("user is already a member of this group")
 	ErrNotGroupMember = newUnauthorized("user is not a member of this group")
 
-	ErrEventNotFound = newNotFound("event not found")
+	ErrEventNotFound    = newNotFound("event not found")
+	ErrAlreadyAttending = newConflict("user is already confirmed for this event")
 
 	ErrInvalidCredentials = newUnauthorized("invalid email or password")
 )

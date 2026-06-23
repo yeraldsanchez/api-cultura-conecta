@@ -40,6 +40,52 @@ type EventOutput struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+type AttendeeOutput struct {
+	EventID     int32     `json:"event_id"`
+	UserID      int32     `json:"user_id"`
+	ConfirmedAt time.Time `json:"confirmed_at"`
+}
+
+func (s *EventService) ConfirmAttendance(ctx context.Context, eventID int32, userID int32, groupID int32) (AttendeeOutput, error) {
+	var out AttendeeOutput
+	err := withTx(ctx, s.pool, func(q db.Querier) error {
+		event, err := q.GetEventByID(ctx, eventID)
+		if err != nil {
+			return apperrors.ErrEventNotFound
+		}
+		if event.GroupID != groupID {
+			return apperrors.ErrEventNotFound
+		}
+
+		isMember, err := q.IsGroupMember(ctx, db.IsGroupMemberParams{
+			GroupID: groupID,
+			UserID:  userID,
+		})
+		if err != nil {
+			return err
+		}
+		if !isMember {
+			return apperrors.ErrNotGroupMember
+		}
+
+		attendee, err := q.ConfirmAttendance(ctx, db.ConfirmAttendanceParams{
+			EventID: eventID,
+			UserID:  userID,
+		})
+		if err != nil {
+			return apperrors.FromPgx(err, apperrors.EventAttendeesConstraints)
+		}
+
+		out = AttendeeOutput{
+			EventID:     attendee.EventID,
+			UserID:      attendee.UserID,
+			ConfirmedAt: attendee.ConfirmedAt,
+		}
+		return nil
+	})
+	return out, err
+}
+
 func (s *EventService) GetEventsByGroup(ctx context.Context, groupID int32) ([]EventOutput, error) {
 	q := db.New(s.pool)
 	events, err := q.GetEventsByGroup(ctx, groupID)

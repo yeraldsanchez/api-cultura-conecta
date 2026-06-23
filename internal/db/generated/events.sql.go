@@ -10,6 +10,24 @@ import (
 	"time"
 )
 
+const confirmAttendance = `-- name: ConfirmAttendance :one
+INSERT INTO event_attendees (event_id, user_id)
+VALUES ($1, $2)
+RETURNING event_id, user_id, confirmed_at
+`
+
+type ConfirmAttendanceParams struct {
+	EventID int32 `json:"event_id"`
+	UserID  int32 `json:"user_id"`
+}
+
+func (q *Queries) ConfirmAttendance(ctx context.Context, arg ConfirmAttendanceParams) (EventAttendee, error) {
+	row := q.db.QueryRow(ctx, confirmAttendance, arg.EventID, arg.UserID)
+	var i EventAttendee
+	err := row.Scan(&i.EventID, &i.UserID, &i.ConfirmedAt)
+	return i, err
+}
+
 const createEvent = `-- name: CreateEvent :one
 INSERT INTO events (group_id, created_by, title, description, event_date, modality, link)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -36,6 +54,27 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event
 		arg.Modality,
 		arg.Link,
 	)
+	var i Event
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.CreatedBy,
+		&i.Title,
+		&i.Description,
+		&i.EventDate,
+		&i.Modality,
+		&i.Link,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getEventByID = `-- name: GetEventByID :one
+SELECT id, group_id, created_by, title, description, event_date, modality, link, created_at FROM events WHERE id = $1
+`
+
+func (q *Queries) GetEventByID(ctx context.Context, id int32) (Event, error) {
+	row := q.db.QueryRow(ctx, getEventByID, id)
 	var i Event
 	err := row.Scan(
 		&i.ID,
