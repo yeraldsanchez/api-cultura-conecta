@@ -26,6 +26,7 @@ type Querier interface {
 	CreateUserProfile(ctx context.Context, arg CreateUserProfileParams) (int32, error)
 	GetCategories(ctx context.Context) ([]Category, error)
 	GetCulturalWorks(ctx context.Context) ([]GetCulturalWorksRow, error)
+	GetEventsByGroup(ctx context.Context, groupID int32) ([]Event, error)
 	GetFocusTypes(ctx context.Context) ([]FocusType, error)
 	GetGroupByID(ctx context.Context, id int32) (GetGroupByIDRow, error)
 	GetGroupFocusTypes(ctx context.Context, groupID int32) ([]FocusType, error)

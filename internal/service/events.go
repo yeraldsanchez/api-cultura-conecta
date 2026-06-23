@@ -40,6 +40,29 @@ type EventOutput struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+func (s *EventService) GetEventsByGroup(ctx context.Context, groupID int32) ([]EventOutput, error) {
+	q := db.New(s.pool)
+	events, err := q.GetEventsByGroup(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]EventOutput, len(events))
+	for i, e := range events {
+		out[i] = EventOutput{
+			ID:          e.ID,
+			GroupID:     e.GroupID,
+			CreatedBy:   e.CreatedBy,
+			Title:       e.Title,
+			Description: e.Description,
+			EventDate:   e.EventDate,
+			Modality:    e.Modality,
+			Link:        e.Link,
+			CreatedAt:   e.CreatedAt,
+		}
+	}
+	return out, nil
+}
+
 func (s *EventService) CreateEvent(ctx context.Context, input CreateEventInput) (EventOutput, error) {
 	if input.Modality != "in-person" && input.Modality != "virtual" {
 		return EventOutput{}, apperrors.NewValidationError("modality must be 'in-person' or 'virtual'")
