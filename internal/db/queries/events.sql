@@ -15,3 +15,13 @@ SELECT * FROM events WHERE id = $1;
 INSERT INTO event_attendees (event_id, user_id)
 VALUES ($1, $2)
 RETURNING *;
+
+-- name: GetEventAttendees :many
+SELECT u.id          AS user_id,
+       up.name       AS name,
+       ea.confirmed_at
+FROM event_attendees ea
+         JOIN users u ON u.id = ea.user_id
+         LEFT JOIN user_profiles up ON up.user_id = u.id
+WHERE ea.event_id = $1
+ORDER BY ea.confirmed_at;

@@ -69,6 +69,43 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event
 	return i, err
 }
 
+const getEventAttendees = `-- name: GetEventAttendees :many
+SELECT u.id          AS user_id,
+       up.name       AS name,
+       ea.confirmed_at
+FROM event_attendees ea
+         JOIN users u ON u.id = ea.user_id
+         LEFT JOIN user_profiles up ON up.user_id = u.id
+WHERE ea.event_id = $1
+ORDER BY ea.confirmed_at
+`
+
+type GetEventAttendeesRow struct {
+	UserID      int32     `json:"user_id"`
+	Name        *string   `json:"name"`
+	ConfirmedAt time.Time `json:"confirmed_at"`
+}
+
+func (q *Queries) GetEventAttendees(ctx context.Context, eventID int32) ([]GetEventAttendeesRow, error) {
+	rows, err := q.db.Query(ctx, getEventAttendees, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetEventAttendeesRow{}
+	for rows.Next() {
+		var i GetEventAttendeesRow
+		if err := rows.Scan(&i.UserID, &i.Name, &i.ConfirmedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEventByID = `-- name: GetEventByID :one
 SELECT id, group_id, created_by, title, description, event_date, modality, link, created_at FROM events WHERE id = $1
 `
