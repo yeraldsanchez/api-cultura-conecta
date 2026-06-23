@@ -58,3 +58,8 @@ var PostsConstraints = map[string]error{
 	"posts_group_id_fkey": ErrGroupNotFound,
 	"posts_user_id_fkey":  ErrUserNotFound,
 }
+
+var EventsConstraints = map[string]error{
+	"events_group_id_fkey":   ErrGroupNotFound,
+	"events_created_by_fkey": ErrUserNotFound,
+}

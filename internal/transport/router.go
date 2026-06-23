@@ -33,6 +33,7 @@ func RegisterRoutes(
 	catalog *CatalogHandler,
 	culturalWorks *CulturalWorksHandler,
 	group *GroupHandler,
+	event *EventHandler,
 ) {
 	v1 := r.Group("/api/v1")
 	v1.Use(bodyCapture())
@@ -63,6 +64,7 @@ func RegisterRoutes(
 		protectedGroupG.GET("/:group_id/members", group.GetGroupMembers)
 		protectedGroupG.POST("/:group_id/members", group.JoinGroup)
 		protectedGroupG.POST("/:group_id/posts", group.CreatePost)
+		protectedGroupG.POST("/:group_id/events", event.CreateEvent)
 	}
 
 	interestG := v1.Group("/interests")

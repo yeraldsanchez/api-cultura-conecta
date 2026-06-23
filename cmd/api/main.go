@@ -82,12 +82,14 @@ func main() {
 	catalogSvc := service.NewCatalogService(db.New(pool))
 	culturalWorkSvc := service.NewCulturalWorksService(db.New(pool))
 	groupSvc := service.NewGroupService(db.New(pool), pool)
+	eventSvc := service.NewEventService(pool)
 
 	authHandler := transport.NewAuthHandler(authSvc)
 	userHandler := transport.NewUserProfileHandler(userSvc)
 	catalogHandler := transport.NewCatalogHandler(catalogSvc)
 	culturalWorksHandler := transport.NewCulturalWorksHandler(culturalWorkSvc)
 	groupHandler := transport.NewGroupHandler(groupSvc)
+	eventHandler := transport.NewEventHandler(eventSvc)
 
 	allowedOrigins := strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ",")
 
@@ -101,7 +103,7 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	transport.RegisterRoutes(r, authHandler, userHandler, catalogHandler, culturalWorksHandler, groupHandler)
+	transport.RegisterRoutes(r, authHandler, userHandler, catalogHandler, culturalWorksHandler, groupHandler, eventHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
