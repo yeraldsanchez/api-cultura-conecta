@@ -7,3 +7,11 @@ RETURNING *;
 SELECT * FROM events
 WHERE group_id = $1
 ORDER BY event_date ASC;
+
+-- name: GetEventByID :one
+SELECT * FROM events WHERE id = $1;
+
+-- name: ConfirmAttendance :one
+INSERT INTO event_attendees (event_id, user_id)
+VALUES ($1, $2)
+RETURNING *;

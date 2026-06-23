@@ -63,3 +63,9 @@ var EventsConstraints = map[string]error{
 	"events_group_id_fkey":   ErrGroupNotFound,
 	"events_created_by_fkey": ErrUserNotFound,
 }
+
+var EventAttendeesConstraints = map[string]error{
+	"event_attendees_pkey":         ErrAlreadyAttending,
+	"event_attendees_event_id_fkey": ErrEventNotFound,
+	"event_attendees_user_id_fkey":  ErrUserNotFound,
+}
