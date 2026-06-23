@@ -67,6 +67,7 @@ func RegisterRoutes(
 		protectedGroupG.POST("/:group_id/events", event.CreateEvent)
 		protectedGroupG.GET("/:group_id/events", event.GetEvents)
 		protectedGroupG.POST("/:group_id/events/:event_id/attendees", event.ConfirmAttendance)
+		protectedGroupG.GET("/:group_id/events/:event_id/attendees", event.GetEventAttendees)
 	}
 
 	interestG := v1.Group("/interests")

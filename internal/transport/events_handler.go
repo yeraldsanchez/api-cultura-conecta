@@ -14,6 +14,7 @@ type EventService interface {
 	CreateEvent(ctx context.Context, input service.CreateEventInput) (service.EventOutput, error)
 	GetEventsByGroup(ctx context.Context, groupID int32) ([]service.EventOutput, error)
 	ConfirmAttendance(ctx context.Context, eventID int32, userID int32, groupID int32) (service.AttendeeOutput, error)
+	GetEventAttendees(ctx context.Context, eventID int32, groupID int32) ([]service.AttendeeDetailOutput, error)
 }
 
 type EventHandler struct {
@@ -78,6 +79,24 @@ func (h *EventHandler) ConfirmAttendance(c *gin.Context) {
 		return
 	}
 	OK(c, http.StatusCreated, gin.H{"attendee": attendee})
+}
+
+func (h *EventHandler) GetEventAttendees(c *gin.Context) {
+	groupID, err := parsePathInt32(c, "group_id")
+	if err != nil {
+		return
+	}
+	eventID, err := parsePathInt32(c, "event_id")
+	if err != nil {
+		return
+	}
+
+	attendees, err := h.svc.GetEventAttendees(c.Request.Context(), eventID, groupID)
+	if err != nil {
+		RespondError(c, err, "Error al obtener los asistentes.")
+		return
+	}
+	OK(c, http.StatusOK, gin.H{"attendees": attendees})
 }
 
 func (h *EventHandler) GetEvents(c *gin.Context) {
