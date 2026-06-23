@@ -17,6 +17,7 @@ type Querier interface {
 	CountSuggestedGroups(ctx context.Context, userID int32) (int64, error)
 	CreateCategory(ctx context.Context, name string) (Category, error)
 	CreateCulturalWork(ctx context.Context, arg CreateCulturalWorkParams) (CreateCulturalWorkRow, error)
+	CreateEvent(ctx context.Context, arg CreateEventParams) (Event, error)
 	CreateFocusType(ctx context.Context, name string) (FocusType, error)
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (int32, error)
 	CreatePost(ctx context.Context, arg CreatePostParams) (Post, error)
