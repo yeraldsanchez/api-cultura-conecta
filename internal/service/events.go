@@ -46,6 +46,12 @@ type AttendeeOutput struct {
 	ConfirmedAt time.Time `json:"confirmed_at"`
 }
 
+type AttendeeDetailOutput struct {
+	UserID      int32     `json:"user_id"`
+	Name        *string   `json:"name"`
+	ConfirmedAt time.Time `json:"confirmed_at"`
+}
+
 func (s *EventService) ConfirmAttendance(ctx context.Context, eventID int32, userID int32, groupID int32) (AttendeeOutput, error) {
 	var out AttendeeOutput
 	err := withTx(ctx, s.pool, func(q db.Querier) error {
@@ -84,6 +90,31 @@ func (s *EventService) ConfirmAttendance(ctx context.Context, eventID int32, use
 		return nil
 	})
 	return out, err
+}
+
+func (s *EventService) GetEventAttendees(ctx context.Context, eventID int32, groupID int32) ([]AttendeeDetailOutput, error) {
+	q := db.New(s.pool)
+	event, err := q.GetEventByID(ctx, eventID)
+	if err != nil {
+		return nil, apperrors.ErrEventNotFound
+	}
+	if event.GroupID != groupID {
+		return nil, apperrors.ErrEventNotFound
+	}
+
+	rows, err := q.GetEventAttendees(ctx, eventID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]AttendeeDetailOutput, len(rows))
+	for i, r := range rows {
+		out[i] = AttendeeDetailOutput{
+			UserID:      r.UserID,
+			Name:        r.Name,
+			ConfirmedAt: r.ConfirmedAt,
+		}
+	}
+	return out, nil
 }
 
 func (s *EventService) GetEventsByGroup(ctx context.Context, groupID int32) ([]EventOutput, error) {
