@@ -50,3 +50,39 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Event
 	)
 	return i, err
 }
+
+const getEventsByGroup = `-- name: GetEventsByGroup :many
+SELECT id, group_id, created_by, title, description, event_date, modality, link, created_at FROM events
+WHERE group_id = $1
+ORDER BY event_date ASC
+`
+
+func (q *Queries) GetEventsByGroup(ctx context.Context, groupID int32) ([]Event, error) {
+	rows, err := q.db.Query(ctx, getEventsByGroup, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Event{}
+	for rows.Next() {
+		var i Event
+		if err := rows.Scan(
+			&i.ID,
+			&i.GroupID,
+			&i.CreatedBy,
+			&i.Title,
+			&i.Description,
+			&i.EventDate,
+			&i.Modality,
+			&i.Link,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
