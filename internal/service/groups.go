@@ -206,6 +206,65 @@ func (s *GroupService) CreatePost(ctx context.Context, input CreatePostInput) (P
 	return out, err
 }
 
+type ListGroupPostsInput struct {
+	GroupID int32
+	UserID  int32
+	Limit   int32
+	Offset  int32
+}
+
+type PostWithAuthorOutput struct {
+	ID              int32     `json:"id"`
+	GroupID         int32     `json:"group_id"`
+	UserID          int32     `json:"user_id"`
+	AuthorName      *string   `json:"author_name"`
+	Content         string    `json:"content"`
+	HasSpoiler      bool      `json:"has_spoiler"`
+	SpoilerProgress *string   `json:"spoiler_progress"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+type ListGroupPostsOutput struct {
+	Posts []PostWithAuthorOutput
+}
+
+func (s *GroupService) ListGroupPosts(ctx context.Context, input ListGroupPostsInput) (ListGroupPostsOutput, error) {
+	isMember, err := s.q.IsGroupMember(ctx, db.IsGroupMemberParams{
+		GroupID: input.GroupID,
+		UserID:  input.UserID,
+	})
+	if err != nil {
+		return ListGroupPostsOutput{}, err
+	}
+	if !isMember {
+		return ListGroupPostsOutput{}, apperrors.ErrNotGroupMember
+	}
+
+	rows, err := s.q.ListGroupPosts(ctx, db.ListGroupPostsParams{
+		GroupID: input.GroupID,
+		Offset:  input.Offset,
+		Limit:   input.Limit,
+	})
+	if err != nil {
+		return ListGroupPostsOutput{}, err
+	}
+
+	posts := make([]PostWithAuthorOutput, len(rows))
+	for i, r := range rows {
+		posts[i] = PostWithAuthorOutput{
+			ID:              r.ID,
+			GroupID:         r.GroupID,
+			UserID:          r.UserID,
+			AuthorName:      r.AuthorName,
+			Content:         r.Content,
+			HasSpoiler:      r.HasSpoiler,
+			SpoilerProgress: r.SpoilerProgress,
+			CreatedAt:       r.CreatedAt,
+		}
+	}
+	return ListGroupPostsOutput{Posts: posts}, nil
+}
+
 type SuggestGroupsInput struct {
 	UserID int32
 	Limit  int32
