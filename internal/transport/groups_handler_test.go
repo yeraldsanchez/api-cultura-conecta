@@ -75,6 +75,10 @@ func (f *fakeGroupService) GetGroupMembers(_ context.Context, _ int32) ([]servic
 	return f.groupMembersResult, f.groupMembersErr
 }
 
+func (f *fakeGroupService) ListGroupPosts(_ context.Context, _ service.ListGroupPostsInput) (service.ListGroupPostsOutput, error) {
+	return service.ListGroupPostsOutput{Posts: []service.PostWithAuthorOutput{}}, nil
+}
+
 func newGroupTestRouter(svc transport.GroupService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	h := transport.NewGroupHandler(svc)
