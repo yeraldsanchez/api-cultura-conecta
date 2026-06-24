@@ -306,6 +306,68 @@ func (q *Queries) ListGroupMembers(ctx context.Context, groupID int32) ([]ListGr
 	return items, nil
 }
 
+const listGroupPosts = `-- name: ListGroupPosts :many
+SELECT p.id,
+       p.group_id,
+       p.user_id,
+       p.content,
+       p.has_spoiler,
+       p.spoiler_progress,
+       p.created_at,
+       up.name AS author_name
+FROM posts p
+         LEFT JOIN user_profiles up ON up.user_id = p.user_id
+WHERE p.group_id = $1
+ORDER BY p.created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type ListGroupPostsParams struct {
+	GroupID int32 `json:"group_id"`
+	Offset  int32 `json:"offset"`
+	Limit   int32 `json:"limit"`
+}
+
+type ListGroupPostsRow struct {
+	ID              int32     `json:"id"`
+	GroupID         int32     `json:"group_id"`
+	UserID          int32     `json:"user_id"`
+	Content         string    `json:"content"`
+	HasSpoiler      bool      `json:"has_spoiler"`
+	SpoilerProgress *string   `json:"spoiler_progress"`
+	CreatedAt       time.Time `json:"created_at"`
+	AuthorName      *string   `json:"author_name"`
+}
+
+func (q *Queries) ListGroupPosts(ctx context.Context, arg ListGroupPostsParams) ([]ListGroupPostsRow, error) {
+	rows, err := q.db.Query(ctx, listGroupPosts, arg.GroupID, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListGroupPostsRow{}
+	for rows.Next() {
+		var i ListGroupPostsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GroupID,
+			&i.UserID,
+			&i.Content,
+			&i.HasSpoiler,
+			&i.SpoilerProgress,
+			&i.CreatedAt,
+			&i.AuthorName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGroups = `-- name: ListGroups :many
 SELECT g.id,
        g.work_id,

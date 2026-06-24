@@ -18,6 +18,7 @@ type GroupService interface {
 	GetSuggestedGroups(ctx context.Context, input service.SuggestGroupsInput) (service.ListGroupsOutput, error)
 	GetGroupsByMember(ctx context.Context, userID int32) ([]service.UserGroupOutput, error)
 	GetGroupMembers(ctx context.Context, groupID int32) ([]service.GroupMemberOutput, error)
+	ListGroupPosts(ctx context.Context, input service.ListGroupPostsInput) (service.ListGroupPostsOutput, error)
 }
 
 type GroupHandler struct {
@@ -137,6 +138,36 @@ func (h *GroupHandler) CreatePost(c *gin.Context) {
 		return
 	}
 	OK(c, http.StatusCreated, gin.H{"post": post})
+}
+
+func (h *GroupHandler) ListGroupPosts(c *gin.Context) {
+	groupID, err := parsePathInt32(c, "group_id")
+	if err != nil {
+		return
+	}
+	userID := c.MustGet(UserIDKey).(int32)
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	result, err := h.svc.ListGroupPosts(c.Request.Context(), service.ListGroupPostsInput{
+		GroupID: groupID,
+		UserID:  userID,
+		Limit:   int32(limit),
+		Offset:  int32(offset),
+	})
+	if err != nil {
+		RespondError(c, err, "Error al obtener las publicaciones del grupo.")
+		return
+	}
+	OK(c, http.StatusOK, gin.H{"posts": result.Posts})
 }
 
 func (h *GroupHandler) GetSuggestedGroups(c *gin.Context) {

@@ -40,6 +40,7 @@ type Querier interface {
 	GetUserProfileByUserId(ctx context.Context, id int32) (GetUserProfileByUserIdRow, error)
 	IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error)
 	ListGroupMembers(ctx context.Context, groupID int32) ([]ListGroupMembersRow, error)
+	ListGroupPosts(ctx context.Context, arg ListGroupPostsParams) ([]ListGroupPostsRow, error)
 	ListGroups(ctx context.Context, arg ListGroupsParams) ([]ListGroupsRow, error)
 	ListGroupsByMember(ctx context.Context, userID int32) ([]ListGroupsByMemberRow, error)
 	ListSuggestedGroups(ctx context.Context, arg ListSuggestedGroupsParams) ([]ListSuggestedGroupsRow, error)

@@ -94,6 +94,21 @@ INSERT INTO posts (group_id, user_id, content, has_spoiler, spoiler_progress)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
+-- name: ListGroupPosts :many
+SELECT p.id,
+       p.group_id,
+       p.user_id,
+       p.content,
+       p.has_spoiler,
+       p.spoiler_progress,
+       p.created_at,
+       up.name AS author_name
+FROM posts p
+         LEFT JOIN user_profiles up ON up.user_id = p.user_id
+WHERE p.group_id = $1
+ORDER BY p.created_at DESC
+LIMIT $3 OFFSET $2;
+
 -- name: ListSuggestedGroups :many
 SELECT g.id,
        g.work_id,
