@@ -44,6 +44,9 @@ func RegisterRoutes(
 		authG.POST("/login", auth.Login)
 		authG.POST("/refresh", auth.RefreshToken)
 		authG.POST("/logout", auth.Logout)
+		authG.POST("/ping", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"message": "pong"})
+		})
 	}
 
 	protected := v1.Group("")
