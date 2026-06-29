@@ -37,6 +37,9 @@ func RegisterRoutes(
 ) {
 	v1 := r.Group("/api/v1")
 	v1.Use(bodyCapture())
+	v1.POST("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 
 	authG := v1.Group("/auth")
 	{
