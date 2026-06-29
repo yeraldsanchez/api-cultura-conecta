@@ -35,6 +35,7 @@ func RegisterRoutes(
 	group *GroupHandler,
 	event *EventHandler,
 ) {
+	
 	v1 := r.Group("/api/v1")
 	v1.Use(bodyCapture())
 	v1.POST("/health", func(c *gin.Context) {
